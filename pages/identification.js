@@ -395,7 +395,7 @@ const IdentificationPage = () => {
                   Unable to Identify Species
                 </h3>
                 <p className="text-gray-500">
-                  The image might not contain a clear {activeTab.toLowerCase().slice(0, -1)}, or the species isn't in our database.
+                  The image might not contain a clear {activeTab.toLowerCase().slice(0, -1)}, or the species is not in our database.
                 </p>
               </div>
             )}
