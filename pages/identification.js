@@ -1,9 +1,205 @@
-// pages/identification.js - IMPROVED VERSION
+// pages/identification.js - UPDATED WITH CAMERA FEATURE
 
 import React, { useState, useEffect } from 'react';
 import { Upload, Camera, Loader2, Leaf, Info, CheckCircle, AlertCircle, Search, X } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 
+// Unified Upload Component with Half-Width Options
+const UnifiedUploadComponent = ({ onImageSelect, onClear, imagePreview }) => {
+  const [showCamera, setShowCamera] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
+  const [stream, setStream] = useState(null);
+  const videoRef = React.useRef(null);
+  const canvasRef = React.useRef(null);
+
+  // Start camera
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment', // Use back camera on mobile
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+      
+      setStream(mediaStream);
+      setShowCamera(true);
+      setShowOptions(false);
+      
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      alert('Unable to access camera. Please check permissions or upload a file instead.');
+    }
+  };
+
+  // Stop camera
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setShowCamera(false);
+  };
+
+  // Capture photo
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0);
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], `camera-capture-${Date.now()}.jpg`, {
+          type: 'image/jpeg'
+        });
+        
+        const previewUrl = URL.createObjectURL(blob);
+        onImageSelect(file, previewUrl);
+        stopCamera();
+      }
+    }, 'image/jpeg', 0.9);
+  };
+
+  // Handle file input
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const previewUrl = URL.createObjectURL(file);
+      onImageSelect(file, previewUrl);
+      setShowOptions(false);
+    }
+  };
+
+  // Cleanup camera on unmount
+  React.useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
+
+  // Camera Modal
+  if (showCamera) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center">
+        <div className="relative w-full h-full max-w-4xl max-h-4xl">
+          <button
+            onClick={stopCamera}
+            className="absolute top-4 right-4 z-10 w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center text-white hover:bg-opacity-30 transition-all"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          <div className="w-full h-full flex flex-col items-center justify-center">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover rounded-lg"
+              style={{ maxHeight: 'calc(100vh - 120px)' }}
+            />
+            
+            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+              <button
+                onClick={capturePhoto}
+                className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 transition-colors"
+              >
+                <Camera className="w-8 h-8 text-gray-700" />
+              </button>
+            </div>
+
+            <div className="absolute top-4 left-4 bg-black bg-opacity-50 rounded-lg p-3">
+              <p className="text-white text-sm">Position the plant in center and tap camera button</p>
+            </div>
+          </div>
+
+          <canvas ref={canvasRef} className="hidden" />
+        </div>
+      </div>
+    );
+  }
+
+  // Upload interface
+  return (
+    <div className="relative">
+      {!imagePreview ? (
+        <div className="relative">
+          {/* Hidden file input */}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+            id="image-upload"
+          />
+          
+          {/* Direct Options - Half width layout */}
+          <div className="border border-gray-200 rounded-xl shadow-sm overflow-hidden bg-white">
+            <div className="grid grid-cols-2">
+              {/* Upload Option - Left Half */}
+              <label 
+                htmlFor="image-upload" 
+                className="flex flex-col items-center px-6 py-8 hover:bg-green-100 cursor-pointer transition-colors border-r border-gray-200"
+              >
+                <div className="w-12 h-12 bg-gray-0 rounded-full flex items-center justify-center mb-4">
+                  <Upload className="w-6 h-6 text-gray-500" />
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-700 font-medium mb-1">Upload from Device</p>
+                  <p className="text-gray-400 text-sm">Choose from gallery or files</p>
+                </div>
+              </label>
+              
+              {/* Camera Option - Right Half */}
+              <button 
+                onClick={startCamera}
+                className="flex flex-col items-center px-6 py-8 hover:bg-green-100 transition-colors"
+              >
+                <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                  <Camera className="w-6 h-6 text-gray-500" />
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-700 font-medium mb-1">Take Photo</p>
+                  <p className="text-gray-400 text-sm">Use camera to capture instantly</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="relative">
+          <img
+            src={imagePreview}
+            alt="Selected plant"
+            className="w-full max-w-md mx-auto rounded-xl shadow-md border-2 border-gray-200"
+          />
+          <button
+            onClick={onClear}
+            className="absolute top-2 right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
+          >
+            <X className="w-4 h-4 text-gray-600" />
+          </button>
+        </div>
+      )}
+      
+      {/* Click outside to close options - Remove this since we no longer have dropdown */}
+    </div>
+  );
+};
 const IdentificationPage = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -36,13 +232,19 @@ const IdentificationPage = () => {
     }
   }, []);
 
+  // Updated handleImageSelect to work with camera
+  const handleImageSelect = (file, previewUrl) => {
+    setSelectedImage(file);
+    setImagePreview(previewUrl);
+    setResult(null);
+    setError(null);
+  };
+
+  // Updated handleFileSelect for file input
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (file) {
-      setSelectedImage(file);
-      setImagePreview(URL.createObjectURL(file));
-      setResult(null);
-      setError(null);
+      handleImageSelect(file, URL.createObjectURL(file));
     }
   };
 
@@ -109,8 +311,6 @@ const IdentificationPage = () => {
 
       const identificationResult = await response.json();
       setResult(identificationResult);
-      
-      // Debug: Log the result to see the data structure
       console.log('Identification Result:', identificationResult);
     } catch (error) {
       setError(error.message);
@@ -144,7 +344,6 @@ const IdentificationPage = () => {
     
     const handleImageError = () => {
       console.log('Image failed to load:', currentImage?.url);
-      // Try next image if available
       if (currentImageIndex < images.length - 1) {
         setCurrentImageIndex(currentImageIndex + 1);
       } else {
@@ -156,7 +355,6 @@ const IdentificationPage = () => {
     const confidenceColor = isMainResult ? 'green' : 'blue';
 
     return (
-      
       <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
         <div className="aspect-square bg-gray-100 relative">
           {hasValidImage && currentImage ? (
@@ -180,7 +378,6 @@ const IdentificationPage = () => {
             {(confidence * 100).toFixed(0)}%
           </div>
           
-          {/* Image navigation dots if multiple images */}
           {images.length > 1 && (
             <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
               {images.map((_, imgIndex) => (
@@ -219,7 +416,6 @@ const IdentificationPage = () => {
             <span className="text-xs text-gray-500">{(confidence * 100).toFixed(0)}%</span>
           </div>
           
-          {/* Show number of similar images available */}
           {images.length > 0 && (
             <div className="mt-2 text-xs text-gray-500">
               {images.length} similar image{images.length !== 1 ? 's' : ''} available
@@ -282,81 +478,48 @@ const IdentificationPage = () => {
               </div>
             )}
 
-            {/* Upload Area */}
-            <div className="relative">
-              {!imagePreview ? (
-                <div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    id="image-upload"
-                  />
-                  <label htmlFor="image-upload" className="cursor-pointer block">
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-green-400 hover:bg-green-50 transition-all duration-200">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Upload className="w-8 h-8 text-gray-400" />
-                      </div>
-                      <p className="text-gray-600 font-medium mb-2">Click to upload an image</p>
-                      <p className="text-gray-400 text-sm">Supports JPG, PNG, WebP formats</p>
-                    </div>
-                  </label>
-                </div>
-              ) : (
-                <div className="relative">
-                  <img
-                    src={imagePreview}
-                    alt="Uploaded plant"
-                    className="w-full max-w-md mx-auto rounded-xl shadow-md border-2 border-gray-200"
-                  />
-                  <button
-                    onClick={clearImage}
-                    className="absolute top-2 right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
-                  >
-                    <X className="w-4 h-4 text-gray-600" />
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Unified Upload Component */}
+            <UnifiedUploadComponent 
+              onImageSelect={handleImageSelect}
+              onClear={clearImage}
+              imagePreview={imagePreview}
+            />
 
             {/* Search Bar */}
-            {imagePreview && (
-              <div className="mt-6">
-                <div className="flex items-center space-x-3 max-w-md mx-auto">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search by name"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-                    />
-                  </div>
-                  <button
-                    onClick={handleIdentifyPlant}
-                    disabled={uploading || identifying || !user}
-                    className="px-6 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-                  >
-                    {uploading || identifying ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>{uploading ? 'Uploading...' : 'Analyzing...'}</span>
-                      </>
-                    ) : (
-                      <span>Identify</span>
-                    )}
-                  </button>
-                  <button
-                    onClick={clearImage}
-                    className="px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200 transition-colors"
-                  >
-                    Clear
-                  </button>
+            <div className="mt-6">
+              <div className="flex items-center space-x-3 max-w-md mx-auto">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by name"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                  />
                 </div>
+                <button
+                  onClick={handleIdentifyPlant}
+                  disabled={uploading || identifying || !user}
+                  className="px-6 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                >
+                  {uploading || identifying ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{uploading ? 'Uploading...' : 'Analyzing...'}</span>
+                    </>
+                  ) : (
+                    <span>Identify</span>
+                  )}
+                </button>
+                <button
+                  onClick={clearImage}
+                  className="px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                >
+                  Clear
+                </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -455,6 +618,14 @@ const IdentificationPage = () => {
               <div className="flex items-center space-x-2">
                 <CheckCircle className="w-4 h-4 text-blue-600" />
                 <span>Fill the frame with the subject</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-blue-600" />
+                <span>Use camera for instant capture</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-blue-600" />
+                <span>Position plant in center of frame</span>
               </div>
             </div>
           </div>
