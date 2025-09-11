@@ -1,5 +1,6 @@
-import jwt from 'jsonwebtoken';
-import {dbConnect} from '@/lib/dbConnect';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "../auth/[...nextauth]";
+import { dbConnect } from '@/lib/dbConnect';
 import Marketplace from '@/models/Marketplace';
 import User from '@/models/User';
 
@@ -47,25 +48,25 @@ export default async function handler(req, res) {
 
     case 'POST':
       try {
-        // Verify authentication
-        const token = req.headers.authorization?.replace('Bearer ', '');
-        if (!token) {
+        // Verify authentication with NextAuth session
+        const session = await getServerSession(req, res, authOptions);
+        
+        if (!session || !session.user) {
           return res.status(401).json({ success: false, error: 'Authentication required' });
         }
 
-        let userId;
-        try {
-          const decoded = jwt.verify(token, process.env.JWT_SECRET);
-          userId = decoded.userId;
-        } catch (jwtError) {
-          return res.status(401).json({ success: false, error: 'Invalid token' });
-        }
+        // Get user ID from session
+        const userId = session.user.id;
 
         // Verify user exists
         const user = await User.findById(userId);
         if (!user) {
           return res.status(404).json({ success: false, error: 'User not found' });
         }
+
+        console.log('=== MARKETPLACE LISTING CREATION ===');
+        console.log('User:', session.user.email);
+        console.log('User ID:', userId);
 
         // Create marketplace listing
         const listingData = {
@@ -75,6 +76,8 @@ export default async function handler(req, res) {
 
         const marketplace = new Marketplace(listingData);
         await marketplace.save();
+
+        console.log('Marketplace listing created:', marketplace._id);
 
         // Add listing to user's active marketplace listings
         await User.findByIdAndUpdate(userId, {
@@ -89,6 +92,52 @@ export default async function handler(req, res) {
         res.status(201).json({ success: true, data: populatedListing });
       } catch (error) {
         console.error('POST marketplace error:', error);
+        res.status(400).json({ success: false, error: error.message });
+      }
+      break;
+    
+    case 'DELETE':
+      try {
+        // Verify authentication with NextAuth session
+        const session = await getServerSession(req, res, authOptions);
+        
+        if (!session || !session.user) {
+          return res.status(401).json({ success: false, error: 'Authentication required' });
+        }
+
+        // Get user ID from session
+        const userId = session.user.id;
+
+        const { id } = req.query; // Get the listing ID from the URL query
+
+        if (!id) {
+          return res.status(400).json({ success: false, error: 'Listing ID is required' });
+        }
+
+        console.log('=== MARKETPLACE LISTING DELETION ===');
+        console.log('User:', session.user.email);
+        console.log('Listing ID:', id);
+
+        // Find the listing to ensure the authenticated user owns it
+        const listing = await Marketplace.findOne({ _id: id, user_id: userId });
+
+        if (!listing) {
+          return res.status(404).json({ success: false, error: 'Listing not found or you do not have permission to delete it' });
+        }
+
+        // Perform the deletion
+        await Marketplace.findByIdAndDelete(id);
+
+        // Remove the listing ID from the user's active listings
+        await User.findByIdAndUpdate(userId, {
+          $pull: { active_marketplace_listings: id }
+        });
+
+        console.log('Marketplace listing deleted successfully');
+
+        res.status(200).json({ success: true, message: 'Listing deleted successfully' });
+      } catch (error) {
+        console.error('DELETE marketplace error:', error);
         res.status(400).json({ success: false, error: error.message });
       }
       break;

@@ -1,5 +1,6 @@
-// pages/api/identify-plant.js - FIXED VERSION
-import jwt from 'jsonwebtoken';
+// pages/api/identify-plant.js - Updated for NextAuth
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "./auth/[...nextauth]";
 import { dbConnect } from "@/lib/dbConnect";
 import User from '@/models/User';
 import Identification from '@/models/Identification';
@@ -13,25 +14,25 @@ export default async function handler(req, res) {
     // Connect to database
     await dbConnect();
 
-    // Verify authentication
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
+    // Verify authentication with NextAuth session
+    const session = await getServerSession(req, res, authOptions);
+    
+    if (!session || !session.user) {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    let userId;
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      userId = decoded.userId;
-    } catch (error) {
-      return res.status(401).json({ message: 'Invalid token' });
-    }
-
-    // Verify user exists
+    // Get user ID from session
+    const userId = session.user.id;
+    
+    // Verify user exists in database
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
+    console.log('=== PLANT IDENTIFICATION REQUEST ===');
+    console.log('User:', session.user.email);
+    console.log('User ID:', userId);
 
     const { image_url } = req.body;
 
@@ -42,6 +43,8 @@ export default async function handler(req, res) {
       });
     }
 
+    console.log('Image URL:', image_url);
+
     // Create initial identification record
     const identification = new Identification({
       user_id: userId,
@@ -51,15 +54,18 @@ export default async function handler(req, res) {
     });
 
     await identification.save();
+    console.log('Identification record created:', identification._id);
 
     // Prepare the request body for Plant.id API with correct format
     const requestBody = {
       images: [image_url],
-      latitude: 43.6532, // Toronto coordinates
+      latitude: 43.6532, // Toronto coordinates (you can make this dynamic based on user location)
       longitude: -79.3832,
       similar_images: true,
       classification_level: "all"
     };
+
+    console.log('Sending request to Plant.id API...');
 
     // Make request to Plant.id API with minimal parameters
     const plantIdResponse = await fetch('https://api.plant.id/v3/identification', {
@@ -87,7 +93,9 @@ export default async function handler(req, res) {
     const plantIdData = await plantIdResponse.json();
     
     // Log the full response to debug
-    console.log('Plant.id API Response:', JSON.stringify(plantIdData, null, 2));
+    console.log('Plant.id API Response received');
+    console.log('Is plant probability:', plantIdData.result?.is_plant?.probability);
+    console.log('Suggestions count:', plantIdData.result?.classification?.suggestions?.length);
 
     // Process the Plant.id response
     let updateData = {
@@ -99,6 +107,8 @@ export default async function handler(req, res) {
       const allSuggestions = plantIdData.result.classification.suggestions;
       const bestMatch = allSuggestions[0];
       
+      console.log('Best match:', bestMatch.name, 'Confidence:', bestMatch.probability);
+      
       // Extract similar images from best match - prioritize full-size images
       const bestMatchImages = bestMatch.similar_images?.slice(0, 4).map(img => ({
         url: img.url || img.url_small, // Use full-size image first, fallback to small
@@ -106,7 +116,7 @@ export default async function handler(req, res) {
         similarity: img.similarity
       })) || [];
 
-      // 🔧 FIXED: Properly extract similar images for each individual suggestion
+      // Extract alternative suggestions with their own images
       const alternativeSuggestions = allSuggestions.slice(1, 4).map((suggestion, index) => {
         let suggestionImages = [];
         
@@ -117,7 +127,7 @@ export default async function handler(req, res) {
             url_small: img.url_small, // Keep small version available if needed
             similarity: img.similarity
           }));
-          console.log(`Images for ${suggestion.name}:`, suggestionImages);
+          console.log(`Images for ${suggestion.name}:`, suggestionImages.length);
         } else {
           console.log(`No images found for ${suggestion.name}`);
         }
@@ -142,12 +152,10 @@ export default async function handler(req, res) {
         plant_details: bestMatch.details || {}
       };
 
-      // Debug: Log what we're about to save to database
-      console.log('Saving to database:', {
-        identified_name: bestMatch.name,
-        alternative_suggestions_count: alternativeSuggestions.length,
-        alternative_suggestions: alternativeSuggestions
-      });
+      console.log('Plant identified successfully:', bestMatch.name);
+      console.log('Alternative suggestions:', alternativeSuggestions.length);
+    } else {
+      console.log('No plant identification found');
     }
 
     // Update the identification record
@@ -162,6 +170,8 @@ export default async function handler(req, res) {
       $inc: { 'stats.total_scans': 1 },
       $set: { 'stats.last_scan': new Date() }
     });
+
+    console.log('User stats updated - Total scans incremented');
 
     // Prepare response data
     const responseData = {
@@ -180,8 +190,10 @@ export default async function handler(req, res) {
       created_at: updatedIdentification.createdAt
     };
 
-    // Log the final response to debug
-    console.log('Final Response Data:', JSON.stringify(responseData, null, 2));
+    console.log('=== PLANT IDENTIFICATION COMPLETE ===');
+    console.log('Success:', updatedIdentification.identified);
+    console.log('Plant name:', updatedIdentification.identified_name);
+    console.log('Confidence:', updatedIdentification.confidence);
 
     return res.status(200).json(responseData);
 

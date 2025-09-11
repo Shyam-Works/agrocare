@@ -14,7 +14,7 @@ const UserSchema = new mongoose.Schema(
       last_scan: { type: Date, default: null },
     },
     active_marketplace_listings: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+      { type: mongoose.Schema.Types.ObjectId, ref: "Marketplace" },
     ],
   },
   { timestamps: true }

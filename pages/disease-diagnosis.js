@@ -302,25 +302,27 @@ const DiseaseDiagnosisPage = () => {
     const [user, setUser] = useState(null);
 
     // Get user info on component mount
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (token) {
-            fetch("/api/auth/verify", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            })
-                .then((res) => res.json())
-                .then((data) => {
-                    if (data.user && data.success !== false) {
-                        setUser(data.user);
-                    }
-                })
-                .catch((error) => {
-                    console.error("Auth error:", error);
-                });
-        }
-    }, []);
+useEffect(() => {
+  fetch("/api/auth/session")
+    .then((res) => res.json())
+    .then((data) => {
+      console.log("Session response:", data); // Debug log
+      
+      if (data && data.user) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email,
+          first_name: data.user.first_name || data.user.name?.split(' ')[0],
+          last_name: data.user.last_name || data.user.name?.split(' ').slice(1).join(' '),
+          profile_image_url: data.user.profile_image_url || data.user.image,
+          location: data.user.location
+        });
+      }
+    })
+    .catch((error) => {
+      console.error("Auth error:", error);
+    });
+}, []);
 
     const handleImageSelect = (file, previewUrl) => {
         setSelectedImage(file);
@@ -425,7 +427,7 @@ const DiseaseDiagnosisPage = () => {
                 {/* Main Upload Card */}
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mb-8">
                     {/* Header with steps - Hidden on mobile */}
-                    <div className="bg-gradient-to-r from-red-50 to-orange-50 p-6 border-b border-gray-200 hidden sm:block">
+                    <div className="bg-gradient-to-r from-orange-200 to-orange-50 p-6 border-b border-gray-200 hidden sm:block">
                         <h2 className="text-xl font-semibold text-gray-800 mb-4">Upload Plant Photo</h2>
                         <div className="flex items-center justify-center space-x-6">
                             <div className="flex items-center space-x-2">

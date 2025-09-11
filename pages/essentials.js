@@ -14,6 +14,390 @@ const categories = [
   "Rental",
 ];
 
+function ProductModal({ listing, isOpen, onClose, currentUser }) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  if (!isOpen || !listing) return null;
+
+  // Debug: Let's see the entire listing object structure
+  console.log("=== FULL LISTING OBJECT ===", listing);
+  console.log("=== USER_ID OBJECT ===", listing.user_id);
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat("en-CA", {
+      style: "currency",
+      currency: "CAD",
+    }).format(price);
+  };
+
+  const nextImage = () => {
+    if (listing.images && listing.images.length > 1) {
+      setCurrentImageIndex((prev) =>
+        prev === listing.images.length - 1 ? 0 : prev + 1
+      );
+    }
+  };
+
+  const prevImage = () => {
+    if (listing.images && listing.images.length > 1) {
+      setCurrentImageIndex((prev) =>
+        prev === 0 ? listing.images.length - 1 : prev - 1
+      );
+    }
+  };
+
+  const goToImage = (index) => {
+    setCurrentImageIndex(index);
+  };
+
+  // Close modal when clicking outside
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50"
+        >
+          <svg
+            className="w-5 h-5 text-gray-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+          {/* Image Section */}
+          <div className="space-y-4">
+            {/* Main Image */}
+            <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
+              {listing.images && listing.images.length > 0 ? (
+                <>
+                  <Image
+                    src={listing.images[currentImageIndex]}
+                    alt={listing.title}
+                    fill
+                    className="object-cover"
+                  />
+
+                  {/* Image Navigation Arrows */}
+                  {listing.images.length > 1 && (
+                    <>
+                      <button
+                        onClick={prevImage}
+                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 rounded-full p-2 shadow-lg"
+                      >
+                        <svg
+                          className="w-5 h-5 text-gray-800"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 19l-7-7 7-7"
+                          />
+                        </svg>
+                      </button>
+
+                      <button
+                        onClick={nextImage}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 rounded-full p-2 shadow-lg"
+                      >
+                        <svg
+                          className="w-5 h-5 text-gray-800"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                      </button>
+                    </>
+                  )}
+                </>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <svg
+                    className="w-16 h-16 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
+
+            {/* Image Thumbnails */}
+            {listing.images && listing.images.length > 1 && (
+              <div className="flex space-x-2 overflow-x-auto">
+                {listing.images.map((image, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToImage(index)}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${
+                      index === currentImageIndex
+                        ? "border-green-500"
+                        : "border-gray-200"
+                    }`}
+                  >
+                    <Image
+                      src={image}
+                      alt={`${listing.title} ${index + 1}`}
+                      width={64}
+                      height={64}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Product Details Section */}
+          <div className="space-y-6">
+            {/* Product Info */}
+            <div>
+              <div className="flex items-center space-x-2 mb-2">
+                <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full font-medium capitalize">
+                  {listing.type}
+                </span>
+                <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                  {listing.category}
+                </span>
+              </div>
+
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                {listing.title}
+              </h1>
+
+              <p className="text-3xl font-bold text-green-600 mb-4">
+                {formatPrice(listing.price)}
+              </p>
+            </div>
+
+            {/* Description */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Description
+              </h3>
+              <p className="text-gray-700 leading-relaxed">
+                {listing.description}
+              </p>
+            </div>
+
+            {/* Location */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Location
+              </h3>
+              <p className="text-gray-700 flex items-center">
+                <svg
+                  className="w-5 h-5 text-gray-400 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+                {listing.location}
+              </p>
+            </div>
+
+            {/* Seller Info */}
+            {listing.user_id && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Seller
+                </h3>
+                <div className="flex items-center space-x-3">
+                  {/* Profile Image - Check if this is the current user's listing */}
+                  <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+                    {/* If this is the current user's listing, use session data */}
+                    {currentUser && listing.user_id._id === currentUser.id ? (
+                      currentUser.profile_image_url || currentUser.image ? (
+                        <img
+                          src={
+                            currentUser.profile_image_url || currentUser.image
+                          }
+                          alt={`${
+                            currentUser.first_name ||
+                            currentUser.name?.split(" ")[0]
+                          } ${currentUser.last_name || ""}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // If image fails to load, show initials
+                            e.target.style.display = "none";
+                            e.target.nextSibling.style.display = "flex";
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-green-600 flex items-center justify-center">
+                          <span className="text-white font-semibold text-lg">
+                            {(
+                              currentUser.first_name ||
+                              currentUser.name?.split(" ")[0]
+                            )?.charAt(0)}
+                            {(
+                              currentUser.last_name ||
+                              currentUser.name?.split(" ").slice(1).join(" ")
+                            )?.charAt(0)}
+                          </span>
+                        </div>
+                      )
+                    ) : /* For other users, check populated data */
+                    listing.user_id.profile_image_url ||
+                      listing.user_id.image ? (
+                      <>
+                        <img
+                          src={
+                            listing.user_id.profile_image_url ||
+                            listing.user_id.image
+                          }
+                          alt={`${listing.user_id.first_name} ${listing.user_id.last_name}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // If image fails to load, show initials
+                            e.target.style.display = "none";
+                            e.target.nextSibling.style.display = "flex";
+                          }}
+                        />
+                        <div
+                          className="w-full h-full bg-green-600 items-center justify-center"
+                          style={{ display: "none" }}
+                        >
+                          <span className="text-white font-semibold text-lg">
+                            {listing.user_id.first_name?.charAt(0)}
+                            {listing.user_id.last_name?.charAt(0)}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      // Fallback to initials when no image URL
+                      <div className="w-full h-full bg-green-600 flex items-center justify-center">
+                        <span className="text-white font-semibold text-lg">
+                          {listing.user_id.first_name?.charAt(0)}
+                          {listing.user_id.last_name?.charAt(0)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {listing.user_id.first_name} {listing.user_id.last_name}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {listing.user_id.email}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Contact Info */}
+            {listing.contact_info && (
+              <div className="bg-green-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Contact Information
+                </h3>
+                <div className="space-y-2">
+                  {listing.contact_info.phone && (
+                    <p className="flex items-center text-gray-700">
+                      <svg
+                        className="w-5 h-5 text-green-600 mr-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                        />
+                      </svg>
+                      {listing.contact_info.phone}
+                    </p>
+                  )}
+                  {listing.contact_info.email && (
+                    <p className="flex items-center text-gray-700">
+                      <svg
+                        className="w-5 h-5 text-green-600 mr-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                        />
+                      </svg>
+                      {listing.contact_info.email}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Posted Date */}
+            <div className="text-sm text-gray-500 border-t pt-4">
+              Posted on{" "}
+              {new Date(listing.created_at).toLocaleDateString("en-CA", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Marketplace() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,24 +413,27 @@ export default function Marketplace() {
 
   // Check authentication on mount
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      // Verify token and get user info
-      fetch("/api/auth/verify", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    fetch("/api/auth/session")
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Session response:", data); // Debug log
+
+        if (data && data.user) {
+          setUser({
+            id: data.user.id,
+            email: data.user.email,
+            first_name: data.user.first_name || data.user.name?.split(" ")[0],
+            last_name:
+              data.user.last_name ||
+              data.user.name?.split(" ").slice(1).join(" "),
+            profile_image_url: data.user.profile_image_url || data.user.image,
+            location: data.user.location,
+          });
+        }
       })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.user && data.success !== false) {
-            setUser(data.user);
-          }
-        })
-        .catch((error) => {
-          console.error("Auth error:", error);
-        });
-    }
+      .catch((error) => {
+        console.error("Auth error:", error);
+      });
   }, []);
 
   const fetchListings = async () => {
@@ -274,11 +661,13 @@ export default function Marketplace() {
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Products</h2>
 
             {loading ? (
-              <div className="flex justify-center items-center py-12">{" "}
+              <div className="flex justify-center items-center py-12">
+                {" "}
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>{" "}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">{" "}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                {" "}
                 {listings.map((listing) => (
                   <ProductCard key={listing._id} listing={listing} />
                 ))}{" "}
@@ -305,8 +694,10 @@ export default function Marketplace() {
   );
 }
 
-// Product Card Component
+// Update the ProductCard component
 function ProductCard({ listing }) {
+  const [showModal, setShowModal] = useState(false);
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat("en-CA", {
       style: "currency",
@@ -315,65 +706,75 @@ function ProductCard({ listing }) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-      {/* Container for the responsive layout */}
-      <div className="flex flex-col md:flex-row">
-        {/* Image Container */}
-        {/* Adjusted for square images on all devices */}
-        <div className="w-full md:w-1/3 aspect-square relative flex-shrink-0">
-          {listing.images && listing.images[0] ? (
-            <Image
-              src={listing.images[0]}
-              alt={listing.title}
-              fill
-              className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none"
-            />
-          ) : (
-            <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-t-lg md:rounded-l-lg md:rounded-tr-none">
-              <svg
-                className="w-12 h-12 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
-          )}
-        </div>
-
-        {/* Details Container */}
-        <div className="w-full md:w-2/3 p-4 flex flex-col justify-between">
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-1">
-              {listing.title}
-            </h3>
-            <p className="text-sm text-green-700 font-medium mb-1 capitalize">
-              {listing.type}
-            </p>
-            <p className="text-sm text-gray-600 mb-2">{listing.location}</p>
-          </div>
-          <div className="mt-auto">
-            <p className="text-lg font-bold text-gray-900">
-              {formatPrice(listing.price)}
-            </p>
-            {listing.user_id && (
-              <p className="text-xs text-gray-500 mt-2">
-                By {listing.user_id.first_name} {listing.user_id.last_name}
-              </p>
+    <>
+      <div
+        className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
+        onClick={() => setShowModal(true)}
+      >
+        {/* Container for the responsive layout */}
+        <div className="flex flex-col md:flex-row">
+          {/* Image Container */}
+          <div className="w-full md:w-1/3 aspect-square relative flex-shrink-0">
+            {listing.images && listing.images[0] ? (
+              <Image
+                src={listing.images[0]}
+                alt={listing.title}
+                fill
+                className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none"
+              />
+            ) : (
+              <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-t-lg md:rounded-l-lg md:rounded-tr-none">
+                <svg
+                  className="w-12 h-12 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
             )}
+          </div>
+
+          {/* Details Container */}
+          <div className="w-full md:w-2/3 p-4 flex flex-col justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-1">
+                {listing.title}
+              </h3>
+              <p className="text-sm text-green-700 font-medium mb-1 capitalize">
+                {listing.type}
+              </p>
+              <p className="text-sm text-gray-600 mb-2">{listing.location}</p>
+            </div>
+            <div className="mt-auto">
+              <p className="text-lg font-bold text-gray-900">
+                {formatPrice(listing.price)}
+              </p>
+              {listing.user_id && (
+                <p className="text-xs text-gray-500 mt-2">
+                  By {listing.user_id.first_name} {listing.user_id.last_name}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Product Modal */}
+      <ProductModal
+        listing={listing}
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+      />
+    </>
   );
 }
-
 // Create Listing Form Component
 function CreateListingForm({ onClose, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -392,24 +793,20 @@ function CreateListingForm({ onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Update the handleSubmit function in CreateListingForm component
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const token = localStorage.getItem("token"); // Use 'token' instead of 'authToken'
-
-      if (!token) {
-        alert("Please log in to create a listing");
-        return;
-      }
-
+      // Remove the localStorage token logic - NextAuth handles sessions automatically
       const response = await fetch("/api/marketplace", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          // Remove the Authorization header - NextAuth uses cookies
         },
+        credentials: "include", // Important: include cookies for session
         body: JSON.stringify({
           ...formData,
           price: parseFloat(formData.price),
@@ -418,13 +815,21 @@ function CreateListingForm({ onClose, onSuccess }) {
 
       const data = await response.json();
 
-      if (data.success) {
+      if (response.ok && data.success) {
         alert("Listing created successfully!");
         onSuccess();
       } else {
-        alert("Error creating listing: " + data.error);
+        // Handle specific error cases
+        if (response.status === 401) {
+          alert("Please log in to create a listing");
+          // Optionally redirect to login
+          window.location.href = "/login";
+        } else {
+          alert("Error creating listing: " + (data.error || data.message));
+        }
       }
     } catch (error) {
+      console.error("Error creating listing:", error);
       alert("Error creating listing: " + error.message);
     } finally {
       setLoading(false);

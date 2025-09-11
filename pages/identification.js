@@ -212,25 +212,28 @@ const IdentificationPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Get user info on component mount
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      fetch("/api/auth/verify", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.user && data.success !== false) {
-            setUser(data.user);
-          }
-        })
-        .catch((error) => {
-          console.error("Auth error:", error);
+// Just replace your useEffect block with:
+useEffect(() => {
+  fetch("/api/auth/session")
+    .then((res) => res.json())
+    .then((data) => {
+      console.log("Session response:", data); // Debug log
+      
+      if (data && data.user) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email,
+          first_name: data.user.first_name || data.user.name?.split(' ')[0],
+          last_name: data.user.last_name || data.user.name?.split(' ').slice(1).join(' '),
+          profile_image_url: data.user.profile_image_url || data.user.image,
+          location: data.user.location
         });
-    }
-  }, []);
+      }
+    })
+    .catch((error) => {
+      console.error("Auth error:", error);
+    });
+}, []);
 
   // Updated handleImageSelect to work with camera
   const handleImageSelect = (file, previewUrl) => {
