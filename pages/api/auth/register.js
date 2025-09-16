@@ -3,6 +3,33 @@ import bcrypt from "bcryptjs"
 import User from "../../../models/User"
 import { dbConnect } from "../../../lib/dbConnect"
 
+// Enhanced password validation function
+function validatePassword(password) {
+  const requirements = {
+    minLength: password.length >= 6,
+    hasUppercase: /[A-Z]/.test(password),
+    hasLowercase: /[a-z]/.test(password),
+    hasNumber: /\d/.test(password),
+    hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+  };
+  
+  const isValid = Object.values(requirements).every(Boolean);
+  const missingRequirements = Object.entries(requirements)
+    .filter(([key, valid]) => !valid)
+    .map(([key]) => {
+      switch(key) {
+        case 'minLength': return 'at least 6 characters';
+        case 'hasUppercase': return 'one uppercase letter';
+        case 'hasLowercase': return 'one lowercase letter';
+        case 'hasNumber': return 'one number';
+        case 'hasSpecialChar': return 'one special character';
+        default: return key;
+      }
+    });
+  
+  return { isValid, missingRequirements };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" })
@@ -19,7 +46,7 @@ export default async function handler(req, res) {
       profile_image_url 
     } = req.body
 
-    // Validation
+    // Basic validation
     if (!first_name || !last_name || !email || !password) {
       return res.status(400).json({ error: "First name, last name, email, and password are required" })
     }
@@ -28,8 +55,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Passwords do not match" })
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ error: "Password must be at least 6 characters long" })
+    // Enhanced password validation
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ 
+        error: `Password must contain: ${passwordValidation.missingRequirements.join(', ')}`
+      });
     }
 
     await dbConnect()
