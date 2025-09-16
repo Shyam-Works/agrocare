@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Eye, EyeOff, Upload, User, Check, X, Link } from "lucide-react";
+import { Eye, EyeOff, Upload, User, Check, X } from "lucide-react";
+import Link from "next/link";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -364,3 +365,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+
