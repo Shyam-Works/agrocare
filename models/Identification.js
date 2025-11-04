@@ -1,4 +1,4 @@
-// models/Identification.js - FIXED VERSION
+// models/Identification.js - FIXED VERSION WITH INSECT SUPPORT
 import mongoose from "mongoose";
 
 const IdentificationSchema = new mongoose.Schema(
@@ -15,7 +15,8 @@ const IdentificationSchema = new mongoose.Schema(
     plant_type: {
       type: String,
       default: "plant",
-      enum: ["plant", "crop", "flower", "tree", "herb", "unknown"]
+      // ✅ ADDED: "insect" to the enum values
+      enum: ["plant", "insect", "crop", "flower", "tree", "herb", "unknown"]
     },
     identified: {
       type: Boolean,
@@ -41,7 +42,7 @@ const IdentificationSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
-    // 🔧 FIXED: Added similar_images field to alternative_suggestions
+    // Alternative suggestions with similar images support
     alternative_suggestions: [{
       name: String,
       species: String,
@@ -49,23 +50,43 @@ const IdentificationSchema = new mongoose.Schema(
       similar_images: [{
         url: String,        // Full-size image URL
         url_small: String,  // Small/thumbnail URL
-        similarity: Number
-      }]
+        similarity: Number,
+        license_name: String,  // For insect images
+        license_url: String,   // For insect images
+        citation: String       // For insect images
+      }],
+      details: mongoose.Schema.Types.Mixed  // For insect details
     }],
     similar_images: [{
       url: String,        // Full-size image URL
       url_small: String,  // Small/thumbnail URL  
-      similarity: Number
+      similarity: Number,
+      license_name: String,  // For insect images
+      license_url: String,   // For insect images
+      citation: String       // For insect images
     }],
+    // Plant details (also used for insect details)
     plant_details: {
+      // Plant-specific fields
       common_names: [String],
-      description: String,
+      description: mongoose.Schema.Types.Mixed,  // Changed to Mixed for insect support
       taxonomy: mongoose.Schema.Types.Mixed,
       edible_parts: [String],
-      watering: mongoose.Schema.Types.Mixed
+      watering: mongoose.Schema.Types.Mixed,
+      
+      // Insect-specific fields (when plant_type is "insect")
+      url: String,  // Wikipedia URL for insects
+      image: mongoose.Schema.Types.Mixed,  // Reference image for insects
+      entity_id: String,  // Insect.id entity ID
+      language: String
     }
   },
   { timestamps: true }
 );
+
+// Indexes for better query performance
+IdentificationSchema.index({ user_id: 1, createdAt: -1 });
+IdentificationSchema.index({ plant_type: 1 });
+IdentificationSchema.index({ identified: 1 });
 
 export default mongoose.models.Identification || mongoose.model("Identification", IdentificationSchema);

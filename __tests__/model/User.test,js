@@ -1,0 +1,391 @@
+// __tests__/models/User.test.js
+import mongoose from 'mongoose'
+import { MongoMemoryServer } from 'mongodb-memory-server'
+import User from '../../models/User'
+
+describe('User Model', () => {
+  let mongoServer
+
+  beforeAll(async () => {
+    mongoServer = await MongoMemoryServer.create()
+    const mongoUri = mongoServer.getUri()
+    await mongoose.connect(mongoUri)
+  })
+
+  afterAll(async () => {
+    await mongoose.disconnect()
+    await mongoServer.stop()
+  })
+
+  beforeEach(async () => {
+    await User.deleteMany({})
+  })
+
+  describe('Model Validation', () => {
+    it('should create a valid user with all required fields', async () => {
+      const validUser = new User({
+        first_name: 'John',
+        last_name: 'Doe',
+        email: 'john.doe@example.com',
+        password_hash: 'hashedPassword123',
+        location: 'Toronto, ON',
+        profile_image_url: 'https://example.com/avatar.jpg'
+      })
+
+      const savedUser = await validUser.save()
+
+      expect(savedUser._id).toBeDefined()
+      expect(savedUser.first_name).toBe('John')
+      expect(savedUser.last_name).toBe('Doe')
+      expect(savedUser.email).toBe('john.doe@example.com')
+      expect(savedUser.password_hash).toBe('hashedPassword123')
+      expect(savedUser.location).toBe('Toronto, ON')
+      expect(savedUser.profile_image_url).toBe('https://example.com/avatar.jpg')
+    })
+
+    it('should set default stats when creating a user', async () => {
+      const user = new User({
+        first_name: 'Jane',
+        last_name: 'Smith',
+        email: 'jane.smith@example.com',
+        password_hash: 'hashedPassword456',
+        location: 'Vancouver, BC',
+        profile_image_url: 'https://example.com/jane-avatar.jpg'
+      })
+
+      const savedUser = await user.save()
+
+      expect(savedUser.stats.total_scans).toBe(0)
+      expect(savedUser.stats.avg_plant_health).toBe(0)
+      expect(savedUser.stats.last_scan).toBeNull()
+    })
+
+    it('should set timestamps when creating a user', async () => {
+      const user = new User({
+        first_name: 'Bob',
+        last_name: 'Wilson',
+        email: 'bob.wilson@example.com',
+        password_hash: 'hashedPassword789',
+        location: 'Calgary, AB',
+        profile_image_url: 'https://example.com/bob-avatar.jpg'
+      })
+
+      const savedUser = await user.save()
+
+      expect(savedUser.createdAt).toBeDefined()
+      expect(savedUser.updatedAt).toBeDefined()
+      expect(savedUser.createdAt).toBeInstanceOf(Date)
+      expect(savedUser.updatedAt).toBeInstanceOf(Date)
+    })
+
+    it('should initialize empty active_marketplace_listings array', async () => {
+      const user = new User({
+        first_name: 'Alice',
+        last_name: 'Johnson',
+        email: 'alice.johnson@example.com',
+        password_hash: 'hashedPasswordABC',
+        location: 'Montreal, QC',
+        profile_image_url: 'https://example.com/alice-avatar.jpg'
+      })
+
+      const savedUser = await user.save()
+
+      expect(savedUser.active_marketplace_listings).toBeDefined()
+      expect(savedUser.active_marketplace_listings).toHaveLength(0)
+      expect(Array.isArray(savedUser.active_marketplace_listings)).toBe(true)
+    })
+  })
+
+  describe('Required Field Validation', () => {
+    const requiredFields = [
+      'first_name',
+      'last_name', 
+      'email',
+      'password_hash',
+      'location',
+      'profile_image_url'
+    ]
+
+    requiredFields.forEach(field => {
+      it(`should require ${field}`, async () => {
+        const userData = {
+          first_name: 'Test',
+          last_name: 'User',
+          email: 'test@example.com',
+          password_hash: 'hashedPassword',
+          location: 'Test Location',
+          profile_image_url: 'https://example.com/test.jpg'
+        }
+
+        delete userData[field]
+
+        const user = new User(userData)
+
+        let error
+        try {
+          await user.save()
+        } catch (err) {
+          error = err
+        }
+
+        expect(error).toBeDefined()
+        expect(error.errors[field]).toBeDefined()
+        expect(error.errors[field].kind).toBe('required')
+      })
+    })
+  })
+
+  describe('Email Uniqueness', () => {
+    it('should enforce unique email constraint', async () => {
+      const userData = {
+        first_name: 'User',
+        last_name: 'One',
+        email: 'duplicate@example.com',
+        password_hash: 'hashedPassword1',
+        location: 'Location 1',
+        profile_image_url: 'https://example.com/user1.jpg'
+      }
+
+      // Create first user
+      const user1 = new User(userData)
+      await user1.save()
+
+      // Try to create second user with same email
+      const user2 = new User({
+        ...userData,
+        first_name: 'User',
+        last_name: 'Two',
+        password_hash: 'hashedPassword2'
+      })
+
+      let error
+      try {
+        await user2.save()
+      } catch (err) {
+        error = err
+      }
+
+      expect(error).toBeDefined()
+      expect(error.code).toBe(11000) // MongoDB duplicate key error
+    })
+
+    it('should allow different emails', async () => {
+      const user1 = new User({
+        first_name: 'User',
+        last_name: 'One',
+        email: 'user1@example.com',
+        password_hash: 'hashedPassword1',
+        location: 'Location 1',
+        profile_image_url: 'https://example.com/user1.jpg'
+      })
+
+      const user2 = new User({
+        first_name: 'User',
+        last_name: 'Two',
+        email: 'user2@example.com',
+        password_hash: 'hashedPassword2',
+        location: 'Location 2',
+        profile_image_url: 'https://example.com/user2.jpg'
+      })
+
+      const savedUser1 = await user1.save()
+      const savedUser2 = await user2.save()
+
+      expect(savedUser1._id).toBeDefined()
+      expect(savedUser2._id).toBeDefined()
+      expect(savedUser1._id).not.toEqual(savedUser2._id)
+    })
+  })
+
+  describe('Stats Object Structure', () => {
+    it('should allow updating stats', async () => {
+      const user = new User({
+        first_name: 'Stats',
+        last_name: 'User',
+        email: 'stats@example.com',
+        password_hash: 'hashedPassword',
+        location: 'Stats Location',
+        profile_image_url: 'https://example.com/stats.jpg'
+      })
+
+      const savedUser = await user.save()
+
+      // Update stats
+      savedUser.stats.total_scans = 5
+      savedUser.stats.avg_plant_health = 85.5
+      savedUser.stats.last_scan = new Date()
+
+      const updatedUser = await savedUser.save()
+
+      expect(updatedUser.stats.total_scans).toBe(5)
+      expect(updatedUser.stats.avg_plant_health).toBe(85.5)
+      expect(updatedUser.stats.last_scan).toBeInstanceOf(Date)
+    })
+
+    it('should validate stats data types', async () => {
+      const user = new User({
+        first_name: 'Invalid',
+        last_name: 'Stats',
+        email: 'invalid-stats@example.com',
+        password_hash: 'hashedPassword',
+        location: 'Invalid Location',
+        profile_image_url: 'https://example.com/invalid.jpg',
+        stats: {
+          total_scans: 'not-a-number', // Invalid type
+          avg_plant_health: 0,
+          last_scan: null
+        }
+      })
+
+      let error
+      try {
+        await user.save()
+      } catch (err) {
+        error = err
+      }
+
+      expect(error).toBeDefined()
+      expect(error.errors['stats.total_scans']).toBeDefined()
+    })
+  })
+
+  describe('Marketplace Listings References', () => {
+    it('should store ObjectId references in active_marketplace_listings', async () => {
+      const user = new User({
+        first_name: 'Marketplace',
+        last_name: 'User',
+        email: 'marketplace@example.com',
+        password_hash: 'hashedPassword',
+        location: 'Marketplace Location',
+        profile_image_url: 'https://example.com/marketplace.jpg'
+      })
+
+      const savedUser = await user.save()
+
+      // Add some marketplace listing IDs
+      const listingId1 = new mongoose.Types.ObjectId()
+      const listingId2 = new mongoose.Types.ObjectId()
+
+      savedUser.active_marketplace_listings.push(listingId1, listingId2)
+      const updatedUser = await savedUser.save()
+
+      expect(updatedUser.active_marketplace_listings).toHaveLength(2)
+      expect(updatedUser.active_marketplace_listings[0]).toEqual(listingId1)
+      expect(updatedUser.active_marketplace_listings[1]).toEqual(listingId2)
+    })
+  })
+
+  describe('Model Methods and Queries', () => {
+    beforeEach(async () => {
+      // Create test users
+      const users = [
+        {
+          first_name: 'John',
+          last_name: 'Doe',
+          email: 'john@example.com',
+          password_hash: 'hash1',
+          location: 'Toronto',
+          profile_image_url: 'https://example.com/john.jpg'
+        },
+        {
+          first_name: 'Jane',
+          last_name: 'Smith',
+          email: 'jane@example.com',
+          password_hash: 'hash2',
+          location: 'Vancouver',
+          profile_image_url: 'https://example.com/jane.jpg'
+        }
+      ]
+
+      await User.insertMany(users)
+    })
+
+    it('should find user by email', async () => {
+      const user = await User.findOne({ email: 'john@example.com' })
+
+      expect(user).toBeDefined()
+      expect(user.first_name).toBe('John')
+      expect(user.last_name).toBe('Doe')
+      expect(user.email).toBe('john@example.com')
+    })
+
+    it('should return null for non-existent email', async () => {
+      const user = await User.findOne({ email: 'nonexistent@example.com' })
+
+      expect(user).toBeNull()
+    })
+
+    it('should update user fields', async () => {
+      const user = await User.findOne({ email: 'jane@example.com' })
+      
+      user.location = 'Montreal'
+      user.stats.total_scans = 10
+      
+      const updatedUser = await user.save()
+
+      expect(updatedUser.location).toBe('Montreal')
+      expect(updatedUser.stats.total_scans).toBe(10)
+    })
+
+    it('should delete user', async () => {
+      const user = await User.findOne({ email: 'john@example.com' })
+      await user.deleteOne()
+
+      const deletedUser = await User.findOne({ email: 'john@example.com' })
+      expect(deletedUser).toBeNull()
+    })
+  })
+
+  describe('Edge Cases', () => {
+    it('should handle very long strings within reasonable limits', async () => {
+      const longString = 'a'.repeat(1000)
+
+      const user = new User({
+        first_name: 'Long',
+        last_name: 'Name',
+        email: 'long@example.com',
+        password_hash: longString,
+        location: 'Long Location',
+        profile_image_url: 'https://example.com/long.jpg'
+      })
+
+      const savedUser = await user.save()
+      expect(savedUser.password_hash).toBe(longString)
+    })
+
+    it('should handle special characters in names', async () => {
+      const user = new User({
+        first_name: "Jean-François",
+        last_name: "O'Connor-Smith",
+        email: 'special@example.com',
+        password_hash: 'hashedPassword',
+        location: 'Montréal, QC',
+        profile_image_url: 'https://example.com/special.jpg'
+      })
+
+      const savedUser = await user.save()
+      expect(savedUser.first_name).toBe("Jean-François")
+      expect(savedUser.last_name).toBe("O'Connor-Smith")
+      expect(savedUser.location).toBe('Montréal, QC')
+    })
+
+    it('should handle null values in optional nested fields', async () => {
+      const user = new User({
+        first_name: 'Null',
+        last_name: 'Stats',
+        email: 'null-stats@example.com',
+        password_hash: 'hashedPassword',
+        location: 'Null Location',
+        profile_image_url: 'https://example.com/null.jpg',
+        stats: {
+          total_scans: 0,
+          avg_plant_health: 0,
+          last_scan: null // Explicitly null
+        }
+      })
+
+      const savedUser = await user.save()
+      expect(savedUser.stats.last_scan).toBeNull()
+    })
+  })
+})
