@@ -1,8 +1,13 @@
-import { useState } from "react";
-import { Eye, EyeOff, Upload, User, Check, X } from "lucide-react";
+// pages/register.js - Complete fixed version
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router"; // Add this import
+import { Check, X } from "lucide-react";
+import { Button, Input, FileUpload } from "../components";
 
 export default function RegisterPage() {
+  const router = useRouter(); // Add this line
+  
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -14,64 +19,142 @@ export default function RegisterPage() {
   });
   const [loading, setLoading] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
 
-  // Password validation function
-  const getPasswordValidation = (password) => {
-    return {
-      minLength: password.length >= 6,
-      hasUppercase: /[A-Z]/.test(password),
-      hasLowercase: /[a-z]/.test(password),
-      hasNumber: /\d/.test(password),
-      hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+  // Vanta background setup
+  const vantaRef = useRef(null);
+  const vantaEffect = useRef(null);
+
+  useEffect(() => {
+    const loadScript = (src) =>
+      new Promise((resolve, reject) => {
+        if (document.querySelector(`script[src="${src}"]`)) return resolve();
+        const script = document.createElement("script");
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+
+    const initVanta = async () => {
+      try {
+        await loadScript(
+          "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"
+        );
+        await loadScript(
+          "https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.topology.min.js"
+        );
+        if (window.VANTA && vantaRef.current && !vantaEffect.current) {
+          vantaEffect.current = window.VANTA.TOPOLOGY({
+            el: vantaRef.current,
+            mouseControls: true,
+            touchControls: true,
+            gyroControls: false,
+            minHeight: 200.0,
+            minWidth: 200.0,
+            scale: 1.0,
+            scaleMobile: 1.0,
+          });
+        }
+      } catch (err) {
+        console.error("Error loading Vanta.js:", err);
+      }
     };
-  };
+
+    initVanta();
+
+    return () => {
+      if (vantaEffect.current) {
+        vantaEffect.current.destroy();
+        vantaEffect.current = null;
+      }
+    };
+  }, []);
+
+  const getPasswordValidation = (password) => ({
+    minLength: password.length >= 6,
+    hasUppercase: /[A-Z]/.test(password),
+    hasLowercase: /[a-z]/.test(password),
+    hasNumber: /\d/.test(password),
+    hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+  });
 
   const passwordValidation = getPasswordValidation(form.password);
   const isPasswordValid = Object.values(passwordValidation).every(Boolean);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-    setError(""); // Clear error when user starts typing
+    setError("");
   };
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  // In your register form component
+const handleImageUpload = async (file, error) => {
+  if (error) {
+    console.error('File upload error:', error);
+    // Handle error - maybe show toast or set error state
+    return;
+  }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Image size should be less than 5MB");
-      return;
-    }
+  if (!file) {
+    // Clear the image if no file selected
+    setForm(prev => ({
+      ...prev,
+      profile_image_url: ''
+    }));
+    return;
+  }
 
+  try {
     setImageUploading(true);
-    
-    // Simulate image upload - replace with actual upload logic
-    try {
-      // Create a temporary URL for preview
-      const imageUrl = URL.createObjectURL(file);
-      setForm({ ...form, profile_image_url: imageUrl });
-      
-      // Here you would normally upload to your server
-      setTimeout(() => {
-        setImageUploading(false);
-      }, 1000);
-    } catch (error) {
-      console.error("Upload error:", error);
-      setError("Image upload failed. Please try again.");
-      setImageUploading(false);
-    }
-  };
 
+    // Create FormData to send file
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'profile'); // Specify this is for profile upload
+
+    // Upload to your existing API route
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.secure_url) {
+      // Update form with Cloudinary URL
+      setForm(prev => ({
+        ...prev,
+        profile_image_url: data.secure_url
+      }));
+      
+      // Optional: Show success message
+      console.log('Image uploaded successfully:', data.secure_url);
+    } else {
+      console.error('Upload failed:', data.error);
+      // Handle upload failure - you might want to show an error message to user
+    }
+
+  } catch (uploadError) {
+    console.error('Upload error:', uploadError);
+    // Handle network or other errors
+  } finally {
+    setImageUploading(false);
+  }
+};
+
+  // FIXED handleSubmit function
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    
+
     // Client-side validation
-    if (!form.first_name || !form.last_name || !form.email || !form.password || !form.confirm_password) {
+    if (
+      !form.first_name ||
+      !form.last_name ||
+      !form.email ||
+      !form.password ||
+      !form.confirm_password
+    ) {
       setError("Please fill in all required fields");
       return;
     }
@@ -85,279 +168,356 @@ export default function RegisterPage() {
       setError("Passwords do not match!");
       return;
     }
-    
+
     setLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      alert("Registration successful! Please sign in with your credentials.");
-      // In real app, redirect to login page
+      console.log("Submitting registration data...");
+
+      // Make actual API call to your registration endpoint
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          first_name: form.first_name,
+          last_name: form.last_name,
+          email: form.email,
+          password: form.password,
+          confirm_password: form.confirm_password,
+          location: form.location,
+          profile_image_url: form.profile_image_url,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Success - redirect to login page
+        alert("Registration successful! Please sign in with your credentials.");
+        router.push("/login");
+      } else {
+        // Handle API errors
+        setError(data.error || "Registration failed. Please try again.");
+      }
     } catch (error) {
       console.error("Registration error:", error);
-      setError("Registration failed! Please try again.");
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const ValidationIcon = ({ isValid }) => (
+  const ValidationIcon = ({ isValid }) =>
     isValid ? (
       <Check className="w-4 h-4 text-green-500" />
     ) : (
       <X className="w-4 h-4 text-red-500" />
-    )
-  );
+    );
+
+  const getPasswordStrengthInfo = () => {
+    const validCount = Object.values(passwordValidation).filter(Boolean).length;
+    
+    if (validCount >= 4) {
+      return { strength: 'Strong', color: 'text-green-600', width: 'w-full', bgColor: 'bg-green-500' };
+    } else if (validCount >= 2) {
+      return { strength: 'Medium', color: 'text-yellow-600', width: 'w-3/5', bgColor: 'bg-yellow-500' };
+    } else {
+      return { strength: 'Weak', color: 'text-red-600', width: 'w-1/5', bgColor: 'bg-red-500' };
+    }
+  };
+
+  const passwordStrength = form.password ? getPasswordStrengthInfo() : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-md">
+    <div
+      ref={vantaRef}
+      className="min-h-screen flex items-center justify-center p-4 relative"
+    >
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(30px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          
+          @keyframes slideInLeft {
+            from {
+              opacity: 0;
+              transform: translateX(-30px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(0);
+            }
+          }
+          
+          @keyframes slideInRight {
+            from {
+              opacity: 0;
+              transform: translateX(30px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(0);
+            }
+          }
+          
+          @keyframes bounceIn {
+            0% {
+              opacity: 0;
+              transform: scale(0.3);
+            }
+            50% {
+              transform: scale(1.05);
+            }
+            70% {
+              transform: scale(0.9);
+            }
+            100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+          
+          .animate-fade-in-up {
+            animation: fadeInUp 0.8s ease-out forwards;
+          }
+          
+          .animate-slide-in-left {
+            animation: slideInLeft 0.6s ease-out forwards;
+          }
+          
+          .animate-slide-in-right {
+            animation: slideInRight 0.6s ease-out forwards;
+          }
+          
+          .animate-bounce-in {
+            animation: bounceIn 0.6s ease-out forwards;
+          }
+          
+          .animation-delay-200 {
+            animation-delay: 0.2s;
+            opacity: 0;
+          }
+          
+          .animation-delay-400 {
+            animation-delay: 0.4s;
+            opacity: 0;
+          }
+          
+          .animation-delay-600 {
+            animation-delay: 0.6s;
+            opacity: 0;
+          }
+          
+          .animation-delay-800 {
+            animation-delay: 0.8s;
+            opacity: 0;
+          }
+          
+          .animation-delay-1000 {
+            animation-delay: 1s;
+            opacity: 0;
+          }
+          
+          .animation-delay-1200 {
+            animation-delay: 1.2s;
+            opacity: 0;
+          }
+          
+          .animation-delay-1400 {
+            animation-delay: 1.4s;
+            opacity: 0;
+          }
+          
+          .animation-delay-1600 {
+            animation-delay: 1.6s;
+            opacity: 0;
+          }
+          
+          .animation-delay-1800 {
+            animation-delay: 1.8s;
+            opacity: 0;
+          }
+          
+          .animation-delay-2000 {
+            animation-delay: 2s;
+            opacity: 0;
+          }
+        `,
+        }}
+      />
+      
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black bg-opacity-10 z-0 pointer-events-none"></div>
+
+      <div className="bg-white/1.5 backdrop-blur-[6px] rounded-3xl shadow-xl p-6 w-full max-w-md relative z-10 border border-white/10">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-green-800 mb-2">
+          <h1 className="text-2xl font-bold mb-2 animate-fade-in-up" style={{ color: "#C5D96F" }}>
             Join AgroCare
           </h1>
-          <p className="text-sm text-gray-600">Create your account to get started</p>
+          <p className="text-sm text-white animate-fade-in-up animation-delay-200">
+            Create your account to get started
+          </p>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg mb-4 text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg mb-4 text-sm animate-fade-in-up animation-delay-400">
             {error}
           </div>
         )}
-        
-        <div className="space-y-4">
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name Fields */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                First Name *
-              </label>
-              <input
-                name="first_name"
-                placeholder="First Name"
-                value={form.first_name}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Last Name *
-              </label>
-              <input
-                name="last_name"
-                placeholder="Last Name"
-                value={form.last_name}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                required
-              />
-            </div>
+          <div className="grid grid-cols-2 gap-3 animate-slide-in-left animation-delay-600">
+            <Input
+              name="first_name"
+              label="First Name"
+              placeholder="First Name"
+              value={form.first_name}
+              onChange={handleChange}
+              variant="glassmorphism"
+              size="md"
+              required
+              maxLength={50}
+            />
+            <Input
+              name="last_name"
+              label="Last Name"
+              placeholder="Last Name"
+              value={form.last_name}
+              onChange={handleChange}
+              variant="glassmorphism"
+              size="md"
+              required
+              maxLength={50}
+            />
           </div>
 
           {/* Email */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Email *
-            </label>
-            <input
+          <div className="animate-slide-in-right animation-delay-800">
+            <Input
               name="email"
               type="email"
+              label="Email"
               placeholder="Enter your email"
               value={form.email}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              variant="glassmorphism"
               required
+              maxLength={100}
             />
           </div>
 
           {/* Password */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Password *
-            </label>
-            <div className="relative">
-              <input
-                name="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Create a password"
-                value={form.password}
-                onChange={handleChange}
-                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+          <div className="animate-fade-in-up animation-delay-1000">
+            <Input
+              name="password"
+              type="password"
+              label="Password"
+              placeholder="Create a password"
+              value={form.password}
+              onChange={handleChange}
+              showPasswordToggle
+              variant="glassmorphism"
+              required
+              maxLength={50}
+            />
             
-            {/* Password Requirements */}
-            {form.password && (
+            {form.password && passwordStrength && (
               <div className="mt-2">
-                {/* Password Strength Bar */}
                 <div className="mb-2">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs text-gray-600">Password Strength</span>
-                    <span className={`text-xs font-medium ${
-                      Object.values(passwordValidation).filter(Boolean).length >= 4 ? 'text-green-600' :
-                      Object.values(passwordValidation).filter(Boolean).length >= 2 ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
-                      {Object.values(passwordValidation).filter(Boolean).length >= 4 ? 'Strong' :
-                       Object.values(passwordValidation).filter(Boolean).length >= 2 ? 'Medium' : 'Weak'}
+                    <span className="text-xs text-gray-300">Password Strength</span>
+                    <span className={`text-xs font-medium ${passwordStrength.color}`}>
+                      {passwordStrength.strength}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-1.5">
                     <div 
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                        Object.values(passwordValidation).filter(Boolean).length >= 4 ? 'bg-green-500 w-full' :
-                        Object.values(passwordValidation).filter(Boolean).length >= 2 ? 'bg-yellow-500 w-3/5' :
-                        'bg-red-500 w-1/5'
-                      }`}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${passwordStrength.bgColor} ${passwordStrength.width}`}
                     ></div>
                   </div>
                 </div>
                 
-                {/* Requirements List */}
-                <div className="space-y-1">
-                  <div className="flex items-center space-x-2 text-xs">
-                    <ValidationIcon isValid={passwordValidation.minLength} />
-                    <span className={passwordValidation.minLength ? 'text-green-600' : 'text-red-600'}>
-                      At least 6 characters
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-xs">
-                    <ValidationIcon isValid={passwordValidation.hasUppercase} />
-                    <span className={passwordValidation.hasUppercase ? 'text-green-600' : 'text-red-600'}>
-                      One uppercase letter
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-xs">
-                    <ValidationIcon isValid={passwordValidation.hasLowercase} />
-                    <span className={passwordValidation.hasLowercase ? 'text-green-600' : 'text-red-600'}>
-                      One lowercase letter
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-xs">
-                    <ValidationIcon isValid={passwordValidation.hasNumber} />
-                    <span className={passwordValidation.hasNumber ? 'text-green-600' : 'text-red-600'}>
-                      One number
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-xs">
-                    <ValidationIcon isValid={passwordValidation.hasSpecialChar} />
-                    <span className={passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-red-600'}>
-                      One special character
-                    </span>
-                  </div>
-                </div>
               </div>
             )}
           </div>
 
           {/* Confirm Password */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Confirm Password *
-            </label>
-            <div className="relative">
-              <input
-                name="confirm_password"
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Confirm your password"
-                value={form.confirm_password}
-                onChange={handleChange}
-                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {form.confirm_password && form.password !== form.confirm_password && (
-              <p className="mt-1 text-xs text-red-600">Passwords do not match</p>
-            )}
+          <div className="animate-slide-in-left animation-delay-1200">
+            <Input
+              name="confirm_password"
+              type="password"
+              label="Confirm Password"
+              placeholder="Confirm your password"
+              value={form.confirm_password}
+              onChange={handleChange}
+              showPasswordToggle
+              variant="glassmorphism"
+              required
+              maxLength={50}
+              error={form.confirm_password && form.password !== form.confirm_password ? 'Passwords do not match' : ''}
+            />
           </div>
 
-          {/* Profile Photo Section - Inline Layout */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">
-              Profile Photo *
-            </label>
-            <div className="flex items-center space-x-3">
-              {form.profile_image_url ? (
-                <img 
-                  src={form.profile_image_url} 
-                  alt="Profile" 
-                  className="w-12 h-12 rounded-full border-2 border-green-100 object-cover flex-shrink-0"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full border-2 border-gray-200 bg-gray-50 flex items-center justify-center flex-shrink-0">
-                  <User className="w-6 h-6 text-gray-400" />
-                </div>
-              )}
-              
-              <div className="flex-1">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  id="profile-upload"
-                  disabled={imageUploading}
-                />
-                <label 
-                  htmlFor="profile-upload" 
-                  className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors w-full ${
-                    imageUploading 
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                      : 'bg-green-100 text-green-700 hover:bg-green-200 border border-green-200'
-                  }`}
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>{imageUploading ? 'Uploading...' : 'Upload Photo'}</span>
-                </label>
-              </div>
-            </div>
+          {/* Profile Photo */}
+          <div className="animate-slide-in-right animation-delay-1400">
+            <FileUpload
+              label="Profile Photo"
+              variant="profile"
+              onChange={handleImageUpload}
+              loading={imageUploading}
+              previewUrl={form.profile_image_url}
+              placeholder="Upload Photo"
+              loadingText="Uploading..."
+              maxSizeText="5MB"
+            />
           </div>
 
           {/* Location */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Location *
-            </label>
-            <input
+          <div className="animate-fade-in-up animation-delay-1600">
+            <Input
               name="location"
+              label="Location"
               placeholder="Enter your location"
-              value={form.location}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              variant="glassmorphism"
+              required
+              maxLength={100}
             />
           </div>
 
           {/* Submit Button */}
-          <button 
-            onClick={handleSubmit}
-            disabled={loading || imageUploading || !isPasswordValid} 
-            className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors mt-6"
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            fullWidth
+            disabled={loading || imageUploading || !isPasswordValid}
+            loading={loading}
+            loadingText="Creating Account..."
+            className="mt-6 animate-bounce-in animation-delay-1800"
           >
-            {loading ? "Creating Account..." : "Create Account"}
-          </button>
-        </div>
+            Create Account
+          </Button>
+        </form>
 
-        {/* Login Link */}
-        <div className="text-center mt-4 text-xs text-gray-600">
+        <div className="text-center mt-4 text-xs text-white animate-fade-in-up animation-delay-2000">
           Already have an account?{" "}
-          <Link href="/login" className="text-green-600 font-medium hover:text-green-700">
+          <Link
+            href="/login"
+            className="text-[#C5D96F] font-medium hover:text-green-700"
+          >
             Sign In
           </Link>
         </div>
@@ -365,4 +525,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-

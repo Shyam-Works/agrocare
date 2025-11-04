@@ -2,104 +2,101 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Navbar from "@/components/Navbar";
 import { getSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 
 export default function Profile() {
+  const { data: session, status } = useSession();
   const [user, setUser] = useState(null);
   const [marketplaceListings, setMarketplaceListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const router = useRouter();
 
-  // Fetch user session and marketplace listings
+
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        setLoading(true);
+  console.log('\n=== PROFILE PAGE MOUNTED ===');
+  console.log('Session data:', {
+    id: session?.user?.id,
+    first_name: session?.user?.first_name,
+    last_name: session?.user?.last_name,
+    email: session?.user?.email,
+  });
+  console.log('=== PROFILE PAGE DATA END ===\n');
+}, [session]);
+  // Fetch user session and marketplace listings
+useEffect(() => {
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
 
-        // Get user session
-        const sessionResponse = await fetch("/api/auth/session");
-        const sessionData = await sessionResponse.json();
+      console.log('\n=== FETCHING USER DATA ===');
+      const sessionResponse = await fetch("/api/auth/session");
+      const sessionData = await sessionResponse.json();
 
-        console.log("Session response:", sessionData);
+      console.log("Session response:", {
+        hasUser: !!sessionData?.user,
+        first_name: sessionData?.user?.first_name,
+        last_name: sessionData?.user?.last_name,
+        email: sessionData?.user?.email,
+      });
 
-        if (sessionData && sessionData.user) {
-          const userData = {
-            id: sessionData.user.id,
-            email: sessionData.user.email,
-            first_name:
-              sessionData.user.first_name ||
-              sessionData.user.name?.split(" ")[0],
-            last_name:
-              sessionData.user.last_name ||
-              sessionData.user.name?.split(" ").slice(1).join(" "),
-            profile_image_url:
-              sessionData.user.profile_image_url || sessionData.user.image,
-            location: sessionData.user.location,
-            stats: sessionData.user.stats,
-          };
+      if (sessionData && sessionData.user) {
+        const userData = {
+          id: sessionData.user.id,
+          email: sessionData.user.email,
+          first_name: sessionData.user.first_name || sessionData.user.name?.split(" ")[0],
+          last_name: sessionData.user.last_name || sessionData.user.name?.split(" ").slice(1).join(" "),
+          role: sessionData.user.role,
+          description: sessionData.user.description,
+          profile_image_url: sessionData.user.profile_image_url || sessionData.user.image,
+          location: sessionData.user.location,
+          stats: sessionData.user.stats,
+        };
+        
+        console.log('Setting user state with:', {
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+        });
+        
+        setUser(userData);
 
-          setUser(userData);
+        // Fetch marketplace listings...
+        try {
+          const listingsResponse = await fetch(`/api/marketplace/user-listings`, {
+            method: "GET",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
 
-          try {
-            console.log("Fetching marketplace listings...");
-
-            // Your API doesn't need userId in URL since it uses session
-            const listingsResponse = await fetch(
-              `/api/marketplace/user-listings`,
-              {
-                method: "GET",
-                credentials: "include", // Important for session cookies
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-
-            console.log("Listings response status:", listingsResponse.status);
-
-            if (listingsResponse.ok) {
-              const listingsData = await listingsResponse.json();
-              console.log("Listings data:", listingsData);
-
-              if (listingsData.success) {
-                // Your API returns 'listings', not 'data'
-                setMarketplaceListings(listingsData.listings || []);
-              } else {
-                console.error("API error:", listingsData.message);
-                setMarketplaceListings([]);
-              }
-            } else {
-              const errorData = await listingsResponse.json().catch(() => ({}));
-              console.error(
-                "Response not ok:",
-                listingsResponse.status,
-                errorData
-              );
-              setMarketplaceListings([]);
+          if (listingsResponse.ok) {
+            const listingsData = await listingsResponse.json();
+            if (listingsData.success) {
+              setMarketplaceListings(listingsData.listings || []);
             }
-          } catch (listingsError) {
-            console.error(
-              "Error fetching marketplace listings:",
-              listingsError
-            );
-            setMarketplaceListings([]);
           }
-        } else {
-          // No valid session - redirect to login
-          console.log("No valid session found, redirecting to login");
-          router.push("/login");
-          return;
+        } catch (listingsError) {
+          console.error("Error fetching marketplace listings:", listingsError);
+          setMarketplaceListings([]);
         }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        setError("Failed to load profile data. Please try again.");
-      } finally {
-        setLoading(false);
+      } else {
+        console.log("No valid session found, redirecting to login");
+        router.push("/login");
+        return;
       }
-    };
+      
+      console.log('=== FETCH USER DATA END ===\n');
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      setError("Failed to load profile data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchUserData();
-  }, [router]);
+  fetchUserData();
+}, [router]);
 
   const handleUpdateProfile = () => {
     router.push("/profile/edit");
@@ -231,7 +228,7 @@ export default function Profile() {
         className="relative h-24 md:h-36 bg-cover bg-center"
         style={{
           backgroundImage:
-            "url('https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1200&h=400&fit=crop')",
+            "url('/profile-background.png')",
         }}
       >
         <div className="absolute inset-0 bg-black bg-opacity-30"></div>
@@ -256,7 +253,10 @@ export default function Profile() {
       </div>
 
       {/* Profile Content */}
-      <div className="bg-gray-50 min-h-screen pt-16 md:pt-20 px-4 md:px-8 pb-6">
+      <div
+        className="min-h-screen pt-16 md:pt-20 px-4 md:px-8 pb-6"
+        style={{ backgroundColor: "#f8f9fa" }}
+      >
         <div className="max-w-7xl mx-auto">
           {/* Name and Title */}
           <div className="mb-6 md:mb-8">
@@ -264,18 +264,18 @@ export default function Profile() {
               {user.first_name} {user.last_name}
             </h1>
             <p className="text-gray-600 text-base md:text-lg mb-2">
-              Farmer | Crop Advisor
+              {user.role}
             </p>
             <p className="text-gray-700 text-sm md:text-base">
-              Hey! I am {user.first_name}. How is your plants feeling today?
+              {user.description}
             </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
             {/* Left Column - Account Info and Stats */}
-            <div className="lg:col-span-1 space-y-4 md:space-y-6">
+            <div className="lg:col-span-1 space-y-4 md:space-y-6 ">
               {/* Account Info */}
-              <div className="bg-white rounded-xl md:rounded-2xl shadow-sm p-4 md:p-6">
+              <div className="bg-white rounded-xl md:rounded-2xl shadow-sm p-4 md:p-6 shadow-[3px_3px_0px_0px_grey]">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 md:mb-4">
                   Account Info
                 </h3>
@@ -326,7 +326,7 @@ export default function Profile() {
               </div>
 
               {/* Stats */}
-              <div className="bg-white rounded-xl md:rounded-2xl shadow-sm p-4 md:p-6">
+              <div className="bg-white rounded-xl md:rounded-2xl shadow-sm p-4 md:p-6 shadow-[3px_3px_0px_0px_grey]">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 md:mb-4">
                   Stats
                 </h3>
@@ -347,6 +347,9 @@ export default function Profile() {
                         ></path>
                       </svg>
                     </div>
+
+
+                    
                     <span className="text-gray-700 text-sm md:text-base">
                       Marketplace Listings:
                     </span>
@@ -407,7 +410,7 @@ export default function Profile() {
             </div>
 
             {/* Right Column - Marketplace Listings */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 rounded-xl shadow-[3px_3px_0px_0px_grey]">
               <div className="bg-white rounded-xl md:rounded-2xl shadow-sm p-4 md:p-6">
                 <div className="flex items-center justify-between mb-4 md:mb-6">
                   <h2 className="text-lg md:text-xl font-semibold text-gray-900">
@@ -439,12 +442,13 @@ export default function Profile() {
                     <button
                       onClick={() => router.push("/essentials")}
                       className="bg-green-800 text-white px-4 py-2 md:px-6 md:py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium text-sm md:text-base"
+                      style={{ backgroundColor: "#1c352d" }}
                     >
                       Create First Listing
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-3 md:space-y-4">
+                  <div className="max-h-[300px] overflow-y-auto space-y-3 md:space-y-4">
                     {marketplaceListings.map((listing) => (
                       <div
                         key={listing._id}
@@ -482,13 +486,14 @@ export default function Profile() {
                         <div className="flex flex-col md:flex-row items-end md:items-center space-y-1 md:space-y-0 md:space-x-2 flex-shrink-0">
                           <button
                             onClick={() => handleEditListing(listing._id)}
-                            className="bg-green-100 text-green-800 px-2 py-1 md:px-4 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium hover:bg-green-200 transition-colors min-w-0"
+                            className="bg-[#f6bd60] text-white px-2 py-1 md:px-4 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium hover:bg-[#e0a44f] transition-colors min-w-0"
                           >
                             Edit
                           </button>
+
                           <button
                             onClick={() => handleDeleteListing(listing._id)}
-                            className="bg-red-100 text-red-800 px-2 py-1 md:px-4 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium hover:bg-red-200 transition-colors min-w-0"
+                            className="bg-[#ef233c] text-white px-2 py-1 md:px-4 md:py-2 rounded-md md:rounded-lg text-xs md:text-sm font-medium hover:bg-[#d90429] transition-colors min-w-0"
                           >
                             Delete
                           </button>
@@ -533,18 +538,20 @@ export default function Profile() {
                 <button
                   onClick={() => router.push("/dashboard")}
                   className="bg-green-800 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium shadow-lg"
+                  style={{ backgroundColor: "#1c352d" }}
                 >
                   Dashboard
                 </button>
                 <button
                   onClick={handleUpdateProfile}
                   className="bg-green-800 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium shadow-lg"
+                  style={{ backgroundColor: "#1c352d" }}
                 >
                   Update Profile
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="bg-gray-100 text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium shadow-lg"
+                  className="bg-warning text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors duration-200 font-medium shadow-lg"
                 >
                   Logout
                 </button>

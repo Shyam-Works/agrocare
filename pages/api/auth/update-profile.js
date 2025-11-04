@@ -1,131 +1,160 @@
 // pages/api/auth/update-profile.js
-import jwt from "jsonwebtoken";
-import User from "../../../models/User";
-import { dbConnect } from "../../../lib/dbConnect";
-import { v2 as cloudinary } from "cloudinary";
+import { dbConnect } from "@/lib/dbConnect";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "./[...nextauth]";
+import mongoose from "mongoose";
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+const UserSchema = new mongoose.Schema({
+  first_name: String,
+  last_name: String,
+  email: String,
+  password_hash: String,
+  location: String,
+  description: String,
+  profile_image_url: String,
+  role: String,
+  stats: Object,
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
 });
+
+const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
 export default async function handler(req, res) {
   if (req.method !== "PUT") {
-    return res.status(405).json({ message: "Method not allowed" });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
+    console.log("\n=== UPDATE PROFILE API START ===");
+    
+    const session = await getServerSession(req, res, authOptions);
+    
+    console.log("Session exists:", !!session);
+    console.log("Session user ID:", session?.user?.id);
+    
+    if (!session || !session.user) {
+      console.log("❌ No valid session found");
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const userId = req.body.userId || session.user.id;
+    console.log("Using user ID:", userId);
+
+    if (!userId) {
+      return res.status(400).json({ error: "User ID is required" });
+    }
+
     await dbConnect();
+    console.log("✅ Database connected");
 
-    // Get token from Authorization header
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "No valid token provided" });
+    const currentUser = await User.findById(userId);
+    console.log("Current user found:", !!currentUser);
+    
+    if (currentUser) {
+      console.log("Current user data:", {
+        first_name: currentUser.first_name,
+        last_name: currentUser.last_name,
+        location: currentUser.location,
+      });
+    }
+    
+    if (!currentUser) {
+      return res.status(404).json({ error: "User not found" });
     }
 
-    const token = authHeader.substring(7);
+    const { 
+      first_name, 
+      last_name, 
+      location, 
+      description, 
+      profile_image_url 
+    } = req.body;
 
-    // Verify token
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (error) {
-      return res.status(401).json({ message: "Invalid token" });
-    }
+    console.log("Update data received:", { 
+      first_name, 
+      last_name, 
+      location, 
+      description: description ? `${description.substring(0, 30)}...` : 'none',
+      profile_image_url: profile_image_url ? "URL provided" : "No URL" 
+    });
 
-    // Parse JSON data from request body
-    const { first_name, last_name, location, profile_image_base64 } = req.body;
-
-    console.log("Received data:", { first_name, last_name, location, hasImage: !!profile_image_base64 });
-
-    // Validate required fields
+    // Validations...
     if (!first_name || !last_name || !location) {
       return res.status(400).json({ 
-        message: "First name, last name, and location are required" 
+        error: "First name, last name, and location are required" 
       });
     }
 
-    // Find user
-    const user = await User.findById(decoded.userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    if (first_name.length > 50 || last_name.length > 50) {
+      return res.status(400).json({ 
+        error: "First name and last name must be less than 50 characters" 
+      });
     }
 
-    // Prepare update data
+    if (location.length > 100) {
+      return res.status(400).json({ 
+        error: "Location must be less than 100 characters" 
+      });
+    }
+
+    if (description && description.length > 500) {
+      return res.status(400).json({ 
+        error: "Description must be less than 500 characters" 
+      });
+    }
+
+    if (profile_image_url && !profile_image_url.startsWith('http')) {
+      return res.status(400).json({ 
+        error: "Profile image URL must be a valid HTTP/HTTPS URL" 
+      });
+    }
+
     const updateData = {
       first_name: first_name.trim(),
       last_name: last_name.trim(),
       location: location.trim(),
+      description: description ? description.trim() : "",
+      updated_at: new Date()
     };
 
-    // Handle profile image update if base64 data provided
-    if (profile_image_base64) {
-      try {
-        // Upload base64 image directly to Cloudinary
-        const cloudinaryResponse = await cloudinary.uploader.upload(
-          profile_image_base64,
-          {
-            resource_type: "image",
-            folder: "agrocare/profiles",
-            transformation: [
-              { width: 400, height: 400, crop: "fill" },
-              { quality: "auto", fetch_format: "auto" }
-            ]
-          }
-        );
-        
-        if (cloudinaryResponse && cloudinaryResponse.secure_url) {
-          updateData.profile_image_url = cloudinaryResponse.secure_url;
-        } else {
-          throw new Error("Failed to upload image to Cloudinary");
-        }
-      } catch (imageError) {
-        console.error("Image upload error:", imageError);
-        return res.status(400).json({ 
-          message: "Failed to upload image. Please try again." 
-        });
-      }
+    if (profile_image_url) {
+      updateData.profile_image_url = profile_image_url;
     }
 
-    console.log("Update data:", updateData);
+    console.log("Updating with data:", updateData);
 
-    // Update user in database
     const updatedUser = await User.findByIdAndUpdate(
-      decoded.userId,
-      updateData,
-      { 
-        new: true, 
-        runValidators: true,
-        select: '-password_hash' 
-      }
+      userId,
+      { $set: updateData },
+      { new: true, select: '-password_hash' }
     );
 
     if (!updatedUser) {
-      return res.status(404).json({ message: "Failed to update user" });
+      console.log("❌ Failed to update user");
+      return res.status(404).json({ error: "User not found" });
     }
 
-    console.log("User updated successfully:", updatedUser.first_name, updatedUser.last_name);
+    console.log("✅ User updated successfully in database");
+    console.log("Updated user data:", {
+      first_name: updatedUser.first_name,
+      last_name: updatedUser.last_name,
+      location: updatedUser.location,
+    });
+    console.log("=== UPDATE PROFILE API END ===\n");
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Profile updated successfully",
       user: updatedUser
     });
 
   } catch (error) {
-    console.error("Update profile API error:", error);
-
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({
-        message: "Validation error",
-        error: error.message
-      });
-    }
-
-    return res.status(500).json({
-      message: "Internal server error",
-      error: error.message
+    console.error("❌ Update profile error:", error);
+    res.status(500).json({ 
+      error: "Internal server error", 
+      message: "Failed to update profile",
+      details: error.message 
     });
   }
 }

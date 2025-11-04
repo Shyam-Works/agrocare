@@ -1,4 +1,4 @@
-// pages/api/identify-plant.js - Updated for NextAuth
+// pages/api/identify-insect.js - Insect Identification API
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "./auth/[...nextauth].js";
 import { dbConnect } from "@/lib/dbConnect";
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    console.log('=== PLANT IDENTIFICATION REQUEST ===');
+    console.log('=== INSECT IDENTIFICATION REQUEST ===');
     console.log('User:', session.user.email);
     console.log('User ID:', userId);
 
@@ -49,83 +49,87 @@ export default async function handler(req, res) {
     const identification = new Identification({
       user_id: userId,
       image_url: image_url,
-      plant_type: "plant",
+      plant_type: "insect",
       identified: false
     });
 
     await identification.save();
     console.log('Identification record created:', identification._id);
 
-    // Prepare the request body for Plant.id API with correct format
+    // Prepare the request body for Insect.id API
     const requestBody = {
       images: [image_url],
       latitude: 43.6532, // Toronto coordinates (you can make this dynamic based on user location)
       longitude: -79.3832,
-      similar_images: true,
-      classification_level: "all"
+      similar_images: true
     };
 
-    console.log('Sending request to Plant.id API...');
+    console.log('Sending request to Insect.id API...');
 
-    // Make request to Plant.id API with minimal parameters
-    const plantIdResponse = await fetch('https://api.plant.id/v3/identification', {
+    // Make request to Insect.id API
+    const insectIdResponse = await fetch('https://insect.kindwise.com/api/v1/identification?details=common_names,url,description,image', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Api-Key': process.env.PLANT_ID_API_KEY,
+        'Api-Key': process.env.INSECT_ID_API_KEY,
       },
       body: JSON.stringify(requestBody),
     });
 
-    if (!plantIdResponse.ok) {
-      const errorText = await plantIdResponse.text();
-      console.error('Plant.id API Error:', errorText);
+    if (!insectIdResponse.ok) {
+      const errorText = await insectIdResponse.text();
+      console.error('Insect.id API Error:', errorText);
       
       // Delete the identification record since it failed
       await Identification.findByIdAndDelete(identification._id);
       
-      return res.status(plantIdResponse.status).json({ 
-        message: 'Plant identification service error',
+      return res.status(insectIdResponse.status).json({ 
+        message: 'Insect identification service error',
         error: errorText
       });
     }
 
-    const plantIdData = await plantIdResponse.json();
+    const insectIdData = await insectIdResponse.json();
     
     // Log the full response to debug
-    console.log('Plant.id API Response received');
-    console.log('Is plant probability:', plantIdData.result?.is_plant?.probability);
-    console.log('Suggestions count:', plantIdData.result?.classification?.suggestions?.length);
+    console.log('Insect.id API Response received');
+    console.log('Is insect probability:', insectIdData.result?.is_insect?.probability);
+    console.log('Suggestions count:', insectIdData.result?.classification?.suggestions?.length);
 
-    // Process the Plant.id response
+    // Process the Insect.id response
     let updateData = {
-      is_plant_probability: plantIdData.result?.is_plant?.probability || 0,
+      is_plant_probability: insectIdData.result?.is_insect?.probability || 0,
     };
 
-    // Check if plant identification was successful
-    if (plantIdData.result?.classification?.suggestions?.length > 0) {
-      const allSuggestions = plantIdData.result.classification.suggestions;
+    // Check if insect identification was successful
+    if (insectIdData.result?.classification?.suggestions?.length > 0) {
+      const allSuggestions = insectIdData.result.classification.suggestions;
       const bestMatch = allSuggestions[0];
       
       console.log('Best match:', bestMatch.name, 'Confidence:', bestMatch.probability);
       
-      // Extract similar images from best match - prioritize full-size images
+      // Extract similar images from best match
       const bestMatchImages = bestMatch.similar_images?.slice(0, 4).map(img => ({
-        url: img.url || img.url_small, // Use full-size image first, fallback to small
-        url_small: img.url_small, // Keep small version available if needed
-        similarity: img.similarity
+        url: img.url || img.url_small,
+        url_small: img.url_small,
+        similarity: img.similarity,
+        license_name: img.license_name,
+        license_url: img.license_url,
+        citation: img.citation
       })) || [];
 
       // Extract alternative suggestions with their own images
-      const alternativeSuggestions = allSuggestions.slice(1, 4).map((suggestion, index) => {
+      const alternativeSuggestions = allSuggestions.slice(1, 4).map((suggestion) => {
         let suggestionImages = [];
         
-        // Extract images specific to THIS suggestion from the Plant.id API response
         if (suggestion.similar_images && suggestion.similar_images.length > 0) {
           suggestionImages = suggestion.similar_images.slice(0, 4).map(img => ({
-            url: img.url || img.url_small, // Use full-size image first, fallback to small
-            url_small: img.url_small, // Keep small version available if needed
-            similarity: img.similarity
+            url: img.url || img.url_small,
+            url_small: img.url_small,
+            similarity: img.similarity,
+            license_name: img.license_name,
+            license_url: img.license_url,
+            citation: img.citation
           }));
           console.log(`Images for ${suggestion.name}:`, suggestionImages.length);
         } else {
@@ -136,7 +140,8 @@ export default async function handler(req, res) {
           name: suggestion.name,
           species: suggestion.name,
           probability: suggestion.probability,
-          similar_images: suggestionImages // Each suggestion gets its own images
+          similar_images: suggestionImages,
+          details: suggestion.details || {}
         };
       });
       
@@ -146,16 +151,16 @@ export default async function handler(req, res) {
         identified_name: bestMatch.name,
         species: bestMatch.name,
         confidence: bestMatch.probability,
-        category: "Plant",
+        category: "Insect",
         alternative_suggestions: alternativeSuggestions,
         similar_images: bestMatchImages,
         plant_details: bestMatch.details || {}
       };
 
-      console.log('Plant identified successfully:', bestMatch.name);
+      console.log('Insect identified successfully:', bestMatch.name);
       console.log('Alternative suggestions:', alternativeSuggestions.length);
     } else {
-      console.log('No plant identification found');
+      console.log('No insect identification found');
     }
 
     // Update the identification record
@@ -182,23 +187,23 @@ export default async function handler(req, res) {
       species: updatedIdentification.species,
       category: updatedIdentification.category,
       confidence: updatedIdentification.confidence,
-      is_plant_probability: updatedIdentification.is_plant_probability,
-      is_plant_detected: updatedIdentification.is_plant_probability > 0.5,
+      is_insect_probability: updatedIdentification.is_plant_probability,
+      is_insect_detected: updatedIdentification.is_plant_probability > 0.5,
       alternative_suggestions: updatedIdentification.alternative_suggestions || [],
       similar_images: updatedIdentification.similar_images || [],
-      plant_details: updatedIdentification.plant_details || {},
+      insect_details: updatedIdentification.plant_details || {},
       created_at: updatedIdentification.createdAt
     };
 
-    console.log('=== PLANT IDENTIFICATION COMPLETE ===');
+    console.log('=== INSECT IDENTIFICATION COMPLETE ===');
     console.log('Success:', updatedIdentification.identified);
-    console.log('Plant name:', updatedIdentification.identified_name);
+    console.log('Insect name:', updatedIdentification.identified_name);
     console.log('Confidence:', updatedIdentification.confidence);
 
     return res.status(200).json(responseData);
 
   } catch (error) {
-    console.error('Plant identification error:', error);
+    console.error('Insect identification error:', error);
     return res.status(500).json({ 
       message: 'Internal server error',
       error: error.message 

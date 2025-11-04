@@ -1,12 +1,11 @@
-// pages/api/disease-diagnosis.js - Updated for NextAuth consistency
+// pages/api/disease-diagnosis.js
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "./auth/[...nextauth]";
+import { authOptions } from "./auth/[...nextauth].js";
 import { dbConnect } from "@/lib/dbConnect";
 import User from '@/models/User';
 import DiseaseDiagnosis from '@/models/DiseaseDiagnosis';
 
-// Plant.id API endpoint for health assessment
-const PLANT_ID_HEALTH_API = 'https://api.plant.id/v3/health_assessment';
+const PLANT_ID_HEALTH_API = 'https://crop.kindwise.com/api/v1/identification';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,20 +13,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Connect to database
     await dbConnect();
 
-    // Verify authentication with NextAuth session (consistent with identify-plant.js)
     const session = await getServerSession(req, res, authOptions);
     
     if (!session || !session.user) {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    // Get user ID from session
     const userId = session.user.id;
     
-    // Verify user exists in database
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -39,7 +34,6 @@ export default async function handler(req, res) {
 
     const { image_url, latitude, longitude, plant_name, plant_type } = req.body;
 
-    // Validate required fields
     if (!image_url) {
       return res.status(400).json({ 
         message: 'Image URL is required' 
@@ -48,14 +42,13 @@ export default async function handler(req, res) {
 
     console.log('Image URL:', image_url);
 
-    // Create initial diagnosis record with all required default values
+    // Create initial diagnosis record
     const diagnosis = new DiseaseDiagnosis({
       user_id: userId,
       image_url: image_url,
       plant_name: plant_name || null,
       plant_type: plant_type || null,
       
-      // Required fields with default values
       is_plant_detected: false,
       plant_detection_probability: 0,
       plant_detection_threshold: 0.5,
@@ -63,7 +56,6 @@ export default async function handler(req, res) {
       health_probability: 0,
       health_threshold: 0.525,
       
-      // Initialize arrays and objects
       disease_suggestions: [],
       diagnostic_question: null,
       primary_disease: {
@@ -80,7 +72,6 @@ export default async function handler(req, res) {
         longitude: longitude || null
       },
 
-      // Initialize API response object
       api_response: {
         access_token: null,
         model_version: null,
@@ -96,22 +87,19 @@ export default async function handler(req, res) {
     await diagnosis.save();
     console.log('Diagnosis record created:', diagnosis._id);
 
-    // Prepare Plant.id API request
     const plantIdRequest = {
       images: [image_url],
-      latitude: latitude || 43.6532, // Toronto coordinates (matching identify-plant.js)
+      latitude: latitude || 43.6532,
       longitude: longitude || -79.3832,
-      similar_images: true,
-      health: "only" // Focus on health/disease detection
+      similar_images: true
     };
 
     console.log('Sending request to Plant.id Health API...');
 
-    // Call Plant.id API for health assessment
     const plantIdResponse = await fetch(PLANT_ID_HEALTH_API, {
       method: 'POST',
       headers: {
-        'Api-Key': process.env.PLANT_ID_API_KEY,
+        'Api-Key': process.env.PLANT_HEALTH_API_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(plantIdRequest)
@@ -121,7 +109,6 @@ export default async function handler(req, res) {
       const errorText = await plantIdResponse.text();
       console.error('Plant.id Health API Error:', errorText);
       
-      // Delete the diagnosis record since it failed
       await DiseaseDiagnosis.findByIdAndDelete(diagnosis._id);
       
       return res.status(plantIdResponse.status).json({ 
@@ -136,7 +123,6 @@ export default async function handler(req, res) {
     console.log('Is plant probability:', apiData.result?.is_plant?.probability);
     console.log('Is healthy probability:', apiData.result?.is_healthy?.probability);
 
-    // Process the API response
     let updateData = {};
     
     if (apiData.result) {
@@ -145,21 +131,17 @@ export default async function handler(req, res) {
       const suggestions = diseaseData.suggestions || [];
       
       updateData = {
-        // Plant detection
         is_plant_detected: result.is_plant?.binary || false,
         plant_detection_probability: result.is_plant?.probability || 0,
         plant_detection_threshold: result.is_plant?.threshold || 0.5,
         
-        // Health status
         is_healthy: result.is_healthy?.binary || false,
         health_probability: result.is_healthy?.probability || 0,
         health_threshold: result.is_healthy?.threshold || 0.525,
         
-        // Disease information
         disease_suggestions: suggestions,
         diagnostic_question: diseaseData.question || null,
         
-        // API metadata
         api_response: {
           access_token: apiData.access_token || null,
           model_version: apiData.model_version || null,
@@ -172,7 +154,6 @@ export default async function handler(req, res) {
         }
       };
 
-      // Determine primary disease (highest probability)
       let primaryDisease = {
         disease_detected: false,
         disease_id: null,
@@ -188,7 +169,7 @@ export default async function handler(req, res) {
           disease_detected: true,
           disease_id: topSuggestion.id || null,
           disease_name: topSuggestion.name || null,
-          category: 'Disease', // You can implement categorizeDiseaseByName method if needed
+          category: 'Disease',
           probability: topSuggestion.probability || 0,
           risk_level: (topSuggestion.probability || 0) > 0.7 ? 'High' : (topSuggestion.probability || 0) > 0.4 ? 'Medium' : 'Low'
         };
@@ -200,7 +181,6 @@ export default async function handler(req, res) {
 
       updateData.primary_disease = primaryDisease;
     } else {
-      // If no result from API, set minimal update data
       updateData = {
         is_plant_detected: false,
         plant_detection_probability: 0,
@@ -231,22 +211,28 @@ export default async function handler(req, res) {
       };
     }
 
-    // Update the diagnosis record
     const updatedDiagnosis = await DiseaseDiagnosis.findByIdAndUpdate(
       diagnosis._id,
       updateData,
       { new: true }
     );
 
-    // Update user stats (consistent with identify-plant.js)
-    await User.findByIdAndUpdate(userId, {
-      $inc: { 'stats.total_scans': 1 },
-      $set: { 'stats.last_scan': new Date() }
-    });
+    // Update user stats - IMPORTANT: Get the updated user data
+    console.log('Updating user stats...');
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        $inc: { 'stats.total_scans': 1 },
+        $set: { 'stats.last_scan': new Date() }
+      },
+      { new: true } // Return the updated document
+    );
 
-    console.log('User stats updated - Total scans incremented');
+    console.log('User stats updated:');
+    console.log('- Total scans:', updatedUser.stats.total_scans);
+    console.log('- Last scan:', updatedUser.stats.last_scan);
 
-    // Prepare response data (consistent format)
+    // Prepare response data with updated stats
     const responseData = {
       diagnosis_id: updatedDiagnosis._id,
       image_url: updatedDiagnosis.image_url,
@@ -270,7 +256,13 @@ export default async function handler(req, res) {
       plant_name: updatedDiagnosis.plant_name,
       plant_type: updatedDiagnosis.plant_type,
       location: updatedDiagnosis.location,
-      created_at: updatedDiagnosis.createdAt
+      created_at: updatedDiagnosis.createdAt,
+      
+      // ✅ ADD UPDATED STATS TO RESPONSE
+      updated_stats: {
+        total_scans: updatedUser.stats.total_scans,
+        last_scan: updatedUser.stats.last_scan
+      }
     };
 
     console.log('=== DISEASE DIAGNOSIS COMPLETE ===');
@@ -283,7 +275,6 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Disease diagnosis error:', error);
     
-    // Log the specific validation errors if it's a validation error
     if (error.name === 'ValidationError') {
       console.error('Validation errors:', error.errors);
       return res.status(400).json({ 

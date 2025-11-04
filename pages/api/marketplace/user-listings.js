@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "../auth/[...nextauth]";
+import { authOptions } from "../auth/[...nextauth].js";
 import { dbConnect } from "../../../lib/dbConnect";
 import User from "../../../models/User";
 import Marketplace from "../../../models/Marketplace";
