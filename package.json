@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:unit": "jest --testPathPattern=unit",
+    "test:verbose": "jest --verbose"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.10.0",
@@ -14,7 +20,9 @@
     "cloudinary": "^2.7.0",
     "dotenv": "^17.2.1",
     "formidable": "^3.5.4",
+    "framer-motion": "^12.23.22",
     "google-auth-library": "^10.3.0",
+    "gsap": "^3.13.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.541.0",
     "mongodb": "^6.19.0",
@@ -22,14 +30,77 @@
     "multer": "^2.0.2",
     "next": "15.5.0",
     "next-auth": "^4.24.11",
+    "nodemailer": "6.8.0",
+    "openai": "^6.1.0",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "react-router-dom": "^7.9.3"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/preset-env": "^7.28.3",
+    "@babel/preset-react": "^7.27.1",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "babel-jest": "^29.7.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "mongodb-memory-server": "^10.2.1",
+    "node-mocks-http": "^1.17.2",
+    "supertest": "^7.1.4",
     "tailwindcss": "^4"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ],
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1"
+    },
+    "transform": {
+      "^.+\\.(js|jsx)$": [
+        "babel-jest",
+        {
+          "presets": [
+            [
+              "@babel/preset-env",
+              {
+                "targets": {
+                  "node": "current"
+                }
+              }
+            ],
+            "@babel/preset-react"
+          ]
+        }
+      ]
+    },
+    "testMatch": [
+      "**/__tests__/**/*.test.js",
+      "**/?(*.)+(spec|test).js"
+    ],
+    "testTimeout": 15000,
+    "collectCoverage": false,
+    "collectCoverageFrom": [
+      "pages/api/**/*.js",
+      "lib/**/*.js",
+      "models/**/*.js",
+      "!pages/api/auth/[...nextauth].js",
+      "!**/*.test.js",
+      "!**/node_modules/**"
+    ],
+    "maxWorkers": 1,
+    "runInBand": true,
+    "forceExit": true,
+    "detectOpenHandles": true,
+    "openHandlesTimeout": 1000,
+    "workerIdleMemoryLimit": "1GB",
+    "silent": false,
+    "verbose": false
   }
 }
