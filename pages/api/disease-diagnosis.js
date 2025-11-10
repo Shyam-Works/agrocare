@@ -163,6 +163,7 @@ export default async function handler(req, res) {
         risk_level: 'Low'
       };
 
+
       if (suggestions.length > 0) {
         const topSuggestion = suggestions[0];
         primaryDisease = {
@@ -178,6 +179,51 @@ export default async function handler(req, res) {
       } else {
         console.log('No disease detected or plant appears healthy');
       }
+      if (primaryDisease.disease_detected) {
+            
+            console.log('Fetching detailed severity analysis from OpenAI...');
+            
+            // Make an internal POST request to your existing details API route
+            // NOTE: This assumes your details API is configured to run locally.
+            const detailsApiUrl = `${req.headers.origin}/api/disease-details`;
+            
+            const openAiResponse = await fetch(detailsApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    diseaseName: primaryDisease.disease_name,
+                    plantName: plant_name || plant_type,
+                    imageUrl: image_url, // Pass the image for vision analysis
+                }),
+            });
+
+            if (openAiResponse.ok) {
+                const openAiData = await openAiResponse.json();
+                const severity = openAiData.details?.severity_assessment;
+                
+                if (severity) {
+                    const affectedPercentage = severity.affected_percentage;
+                    
+                    // 1. UPDATE PRIMARY DISEASE OBJECT with severity data
+                    primaryDisease.affected_percentage = affectedPercentage;
+                    
+                    // You can optionally update risk level based on the vision model's assessment
+                    // This overwrites the simple probability-based logic from before.
+                    primaryDisease.risk_level = openAiData.details.severity_level || primaryDisease.risk_level;
+                    
+                    console.log(`OpenAI Severity: ${affectedPercentage}%, Level: ${primaryDisease.risk_level}`);
+
+                    // 2. Add an optional field to store observations from OpenAI
+                    updateData.ai_severity_observations = {
+                         affected_percentage: affectedPercentage,
+                         severity_level: severity.severity_level,
+                         visual_observations: severity.visual_observations
+                    };
+                }
+            } else {
+                 console.warn('Could not fetch OpenAI details for severity. Proceeding with default values.');
+            }
+        }
 
       updateData.primary_disease = primaryDisease;
     } else {
@@ -234,7 +280,7 @@ export default async function handler(req, res) {
 
     // Prepare response data with updated stats
     const responseData = {
-      diagnosis_id: updatedDiagnosis._id,
+      diagnosis_id: updatedDiagnosis._id.toString(),
       image_url: updatedDiagnosis.image_url,
       is_plant: {
         binary: updatedDiagnosis.is_plant_detected,
@@ -258,6 +304,17 @@ export default async function handler(req, res) {
       location: updatedDiagnosis.location,
       created_at: updatedDiagnosis.createdAt,
       
+      diagnosis_data_for_save: {
+    // These keys match the properties expected by SaveToCategoryModal.jsx
+    disease_name: updatedDiagnosis.primary_disease?.disease_name || 'No Major Disease Detected',
+    confidence_percentage: Math.round(updatedDiagnosis.primary_disease?.probability * 100) || 0,
+    severity_percentage: Math.round(updatedDiagnosis.health_probability * 100) || 0, // Using health_probability as a proxy for severity
+    image_url: updatedDiagnosis.image_url,
+    plant_name: updatedDiagnosis.plant_name || 'Unspecified Plant',
+    // Use the stored timestamp for the diagnosed_date
+    diagnosed_date: updatedDiagnosis.createdAt.toISOString(), 
+  },
+  
       // ✅ ADD UPDATED STATS TO RESPONSE
       updated_stats: {
         total_scans: updatedUser.stats.total_scans,

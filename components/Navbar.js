@@ -35,7 +35,7 @@ const Navbar = () => {
     { name: "Home", path: "/" },
     { name: "Identification", path: "/identification" },
     { name: "Disease Diagnosis", path: "/disease-diagnosis" },
-    { name: "Dashboard", path: "/#", protected: true },
+    { name: "Dashboard", path: "/dashboard", protected: true },
     { name: "Marketplace", path: "/essentials" },
     { name: "How to Start", path: "" },
   ];

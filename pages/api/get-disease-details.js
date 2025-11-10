@@ -21,16 +21,34 @@ export default async function handler(req, res) {
     console.log('Plant:', plantName);
     console.log('Image URL provided:', imageUrl ? 'Yes' : 'No');
 
-    // Validate imageUrl if provided - must be a proper URL, not a blob
-    if (imageUrl && (imageUrl.startsWith('blob:') || !imageUrl.startsWith('http'))) {
-      console.warn('Invalid image URL provided (blob or non-http URL), proceeding without image analysis');
-      console.warn('URL was:', imageUrl);
-      // Set imageUrl to null to proceed without image
-      imageUrl = null;
+    // Improved image validation - accept both HTTP URLs and base64 encoded images
+    let validImageUrl = null;
+    if (imageUrl) {
+      console.log('Original image URL/data length:', imageUrl.substring(0, 100));
+      
+      // Check if it's a base64 encoded image
+      if (imageUrl.startsWith('data:image/')) {
+        console.log('✓ Base64 encoded image detected');
+        validImageUrl = imageUrl;
+      }
+      // Check if it's a valid HTTP/HTTPS URL
+      else if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        console.log('✓ HTTP URL detected');
+        validImageUrl = imageUrl;
+      }
+      // Reject blob URLs
+      else if (imageUrl.startsWith('blob:')) {
+        console.warn('✗ Blob URL detected - cannot be used. Please convert to base64 or upload to cloud storage first.');
+      }
+      else {
+        console.warn('✗ Invalid image format. Expected: http(s):// URL or data:image/ base64');
+      }
     }
 
-    if (imageUrl) {
-      console.log('Using image URL for severity analysis:', imageUrl.substring(0, 50) + '...');
+    if (validImageUrl) {
+      console.log('✓ Valid image will be used for severity analysis');
+    } else if (imageUrl) {
+      console.log('✗ Image provided but invalid format - proceeding without image analysis');
     }
 
     // Prepare messages array
@@ -44,9 +62,9 @@ export default async function handler(req, res) {
     // Build user message content
     let userContent = `Provide detailed information about the plant disease: ${diseaseName}${plantName ? ` affecting ${plantName}` : ''}`;
 
-    // If image is provided, analyze it for disease severity
-    if (imageUrl) {
-      userContent += `\n\nI have provided an image of the affected plant. Please analyze the image and estimate the percentage of the plant affected by the disease (0-100%). Look at visible symptoms, affected leaf area, and overall plant health.`;
+    // If valid image is provided, analyze it for disease severity
+    if (validImageUrl) {
+      userContent += `\n\nI have provided an image of the affected plant. Please analyze the image carefully and estimate the percentage of the plant affected by the disease (0-100%). Look at visible symptoms, affected leaf area, discoloration, spots, wilting, and overall plant health. Be specific in your observations.`;
       
       messages.push({
         role: "user",
@@ -56,12 +74,12 @@ export default async function handler(req, res) {
             text: userContent + `\n\nReturn ONLY a valid JSON object with this exact structure:
 {
   "description": "2-3 sentences about what this disease is, what causes it, and its general characteristics",
-  "reference_link": "A reliable web link of wiki",
+  "reference_link": "A reliable web link to Wikipedia or educational resource",
   "severity_assessment": {
-    "affected_percentage": number (0-100),
-    "severity_level": "mild, moderate, or severe",
-    "visual_observations": "Brief description of what you observe in the image",
-    "affected_areas": "Which parts of the plant show symptoms in the image"
+    "affected_percentage": <number between 0-100>,
+    "severity_level": "<mild, moderate, or severe>",
+    "visual_observations": "Brief description of what you observe in the image (e.g., leaf spots, discoloration, wilting)",
+    "affected_areas": "Which parts of the plant show symptoms in the image (e.g., lower leaves, stems, entire plant)"
   },
   "symptoms": {
     "early_signs": "Description of early symptoms",
@@ -112,7 +130,7 @@ export default async function handler(req, res) {
     "Prevention tip 3",
     "Prevention tip 4"
   ],
-  "severity_level": "low, medium, or high",
+  "severity_level": "<low, medium, or high>",
   "recovery_time": "Expected time for plant recovery with proper treatment",
   "important_note": "Critical warning or important information about this disease"
 }`
@@ -120,7 +138,7 @@ export default async function handler(req, res) {
           {
             type: "image_url",
             image_url: {
-              url: imageUrl,
+              url: validImageUrl,
               detail: "high"
             }
           }
@@ -133,7 +151,7 @@ export default async function handler(req, res) {
         content: userContent + `\n\nReturn ONLY a valid JSON object with this exact structure:
 {
   "description": "2-3 sentences about what this disease is, what causes it, and its general characteristics",
-  "reference_link": "A reliable web link of wiki",
+  "reference_link": "A reliable web link to Wikipedia or educational resource",
   "symptoms": {
     "early_signs": "Description of early symptoms",
     "advanced_stage": "Description of advanced symptoms",
@@ -183,17 +201,20 @@ export default async function handler(req, res) {
     "Prevention tip 3",
     "Prevention tip 4"
   ],
-  "severity_level": "low, medium, or high",
+  "severity_level": "<low, medium, or high>",
   "recovery_time": "Expected time for plant recovery with proper treatment",
   "important_note": "Critical warning or important information about this disease"
 }`
       });
     }
 
+    console.log('Calling OpenAI API...');
+    console.log('Model:', validImageUrl ? "gpt-4o" : "gpt-4o-mini");
+
     const completion = await client.chat.completions.create({
-      model: imageUrl ? "gpt-4o" : "gpt-4o-mini", // Use gpt-4o for vision capabilities
+      model: validImageUrl ? "gpt-4o" : "gpt-4o-mini", // Use gpt-4o for vision capabilities
       messages: messages,
-      max_tokens: 1500,
+      max_tokens: 2000,
       temperature: 0.7,
       response_format: { type: "json_object" }
     });
@@ -202,20 +223,26 @@ export default async function handler(req, res) {
     const parsedInfo = JSON.parse(detailedInfo);
 
     console.log('=== DISEASE DETAILS SUCCESS ===');
-    console.log('Image analyzed:', !!imageUrl);
+    console.log('Image analyzed:', !!validImageUrl);
     console.log('Severity assessment included:', !!parsedInfo.severity_assessment);
+    if (parsedInfo.severity_assessment) {
+      console.log('Affected percentage:', parsedInfo.severity_assessment.affected_percentage + '%');
+      console.log('Severity level:', parsedInfo.severity_assessment.severity_level);
+    }
     console.log('Tokens used:', completion.usage?.total_tokens);
 
     res.status(200).json({
       diseaseName,
       plantName,
-      imageAnalyzed: !!imageUrl,
+      imageAnalyzed: !!validImageUrl,
       details: parsedInfo,
       tokensUsed: completion.usage?.total_tokens
     });
 
   } catch (error) {
-    console.error("Disease details API Error:", error);
+    console.error("=== DISEASE DETAILS API ERROR ===");
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
     res.status(500).json({
       error: "Failed to get disease details",
       details: error.message
