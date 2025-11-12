@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.10.0",
+    "admin-lte": "^4.0.0-rc4",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.7.0",
     "dotenv": "^17.2.3",
@@ -37,7 +38,7 @@
     "react-dom": "19.1.0",
     "react-router-dom": "^7.9.3",
     "rechart": "^0.0.1",
-    "recharts": "^3.3.0"
+    "recharts": "^3.4.1"
   },
   "devDependencies": {
     "@babel/core": "^7.28.4",

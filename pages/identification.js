@@ -389,8 +389,12 @@ const IdentificationPage = () => {
 
   const handleSelectSearchResult = async (result) => {
     activeTab === "Plants"
-    ? `/api/search-plant?q=${encodeURIComponent(searchQuery.trim())}&limit=10&language=en`
-    : `/api/search-insect?q=${encodeURIComponent(searchQuery.trim())}&limit=10&language=en`;
+      ? `/api/search-plant?q=${encodeURIComponent(
+          searchQuery.trim()
+        )}&limit=10&language=en`
+      : `/api/search-insect?q=${encodeURIComponent(
+          searchQuery.trim()
+        )}&limit=10&language=en`;
     console.log("Selected search result:", result);
     setShowSearchResults(false);
     setSearchQuery("");
@@ -541,7 +545,7 @@ const IdentificationPage = () => {
           await fetchInsectDetails(identificationResult.identified_name);
         }
       }
-      
+
       console.log("Identification Result:", identificationResult);
     } catch (error) {
       setError(error.message);
@@ -589,7 +593,7 @@ const IdentificationPage = () => {
         <div className={`mx-auto ${result ? "lg:max-w-7xl" : "max-w-4xl"}`}>
           <header className="text-center mb-12">
             <h1
-              className="text-5xl font-extrabold text-gray-700 mb-4 animate-fade-in-down"
+              className="text-4xl font-bold mb-4 animate-fade-in-down"
               style={{
                 fontFamily: '"Open Sans", sans-serif',
                 fontOpticalSizing: "auto",
@@ -598,8 +602,10 @@ const IdentificationPage = () => {
                 fontVariationSettings: '"wdth" 200',
               }}
             >
-              AI Species Identifier
+              <span className="text-green-700">Species</span>{" "}
+              <span className="text-grey-800">Identification</span>
             </h1>
+
             <p
               style={{
                 fontFamily: '"Open Sans", sans-serif',

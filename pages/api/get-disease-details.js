@@ -64,7 +64,7 @@ export default async function handler(req, res) {
 
     // If valid image is provided, analyze it for disease severity
     if (validImageUrl) {
-      userContent += `\n\nI have provided an image of the affected plant. Please analyze the image carefully and estimate the percentage of the plant affected by the disease (0-100%). Look at visible symptoms, affected leaf area, discoloration, spots, wilting, and overall plant health. Be specific in your observations.`;
+      userContent += `\n\nI have provided an image of the affected plant. Please analyze the image carefully and estimate the percentage of the plant affected by the disease (1-100%) excluding 0. Look at visible symptoms, affected leaf area, discoloration, spots, wilting, and overall plant health. Be specific in your observations.`;
       
       messages.push({
         role: "user",
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
   "description": "2-3 sentences about what this disease is, what causes it, and its general characteristics",
   "reference_link": "A reliable web link to Wikipedia or educational resource",
   "severity_assessment": {
-    "affected_percentage": <number between 0-100>,
+    "affected_percentage": <number between 1-100> excluding 0,
     "severity_level": "<mild, moderate, or severe>",
     "visual_observations": "Brief description of what you observe in the image (e.g., leaf spots, discoloration, wilting)",
     "affected_areas": "Which parts of the plant show symptoms in the image (e.g., lower leaves, stems, entire plant)"
