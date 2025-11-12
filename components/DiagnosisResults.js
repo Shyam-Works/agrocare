@@ -17,6 +17,9 @@ const DiagnosisResults = ({
     return null;
   }
 
+  // Check if disease details have been loaded (AI response received)
+  const hasReceivedAIResponse = diseaseDetails && !loadingDetails;
+
   return (
     <>
       {/* Possible Diagnosis */}
@@ -55,17 +58,19 @@ const DiagnosisResults = ({
         </div>
       )}
 
-      {/* Save Button */}
-      <div className="flex justify-center mb-8">
-        <button
-          onClick={onSaveClick}
-          disabled={!currentDiagnosisId}
-          className="px-6 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Save to Category</span>
-        </button>
-      </div>
+      {/* Save Button - Only show after AI response is received */}
+      {hasReceivedAIResponse && (
+        <div className="flex justify-center mb-8">
+          <button
+            onClick={onSaveClick}
+            disabled={!currentDiagnosisId}
+            className="px-6 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Save to Category</span>
+          </button>
+        </div>
+      )}
     </>
   );
 };
