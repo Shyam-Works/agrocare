@@ -1,3 +1,4 @@
+// components/Chatbot.js
 import React, { useState, useRef, useEffect } from "react";
 import { X, Send } from "lucide-react";
 
@@ -31,14 +32,12 @@ const ChatBot = () => {
         onClick={handleOpenChat}
         className={`fixed bottom-6 right-6 z-50 p-4 rounded-full transition-all duration-300 ${
           isOpen
-            ? "bg-red-500 hover:bg-red-600 scale-90"
+            ? "bg-transparent hover:scale-110"
             : "bg-transparent hover:scale-110"
         }`}
         aria-label={isOpen ? "Close chat" : "Open chat"}
       >
-        {isOpen ? (
-          <X className="w-6 h-6 text-white" />
-        ) : (
+        
           <div className="relative">
             <img
               src="/leafy.jpg"
@@ -46,7 +45,7 @@ const ChatBot = () => {
               className="w-12 h-12 object-cover border-2 border-white rounded-full"
             />
           </div>
-        )}
+
       </button>
 
       {/* Desktop Chat Window */}
@@ -117,7 +116,7 @@ const ChatWindow = ({ isOpen, onClose }) => {
 
 IMPORTANT RULES:
 1. ONLY answer questions about plants, gardening, crops, farming, agriculture, and plant care
-2. If the question is NOT about plants/farming, or greeting politely say: "Sorry, I can only help with plant and farming questions."
+2. If the question is NOT about plants/farming, or greeting politely say: "Sorry, I can only help with plant and farming questions." except greetings and friendly talk
 3. Use simple, easy English words that anyone can understand
 4. Give answers in clear steps (Step 1, Step 2, etc.) when explaining how to do something
 5. Keep answers short and helpful (2-4 sentences or simple steps)
@@ -176,7 +175,7 @@ Examples of what NOT to answer:
     }
   };
 
-  return (
+return (
     <>
       <div
         className={`fixed bottom-24 right-6 z-50 w-[380px] h-[550px] bg-white rounded-3xl shadow-2xl transition-all duration-500 transform ${
@@ -199,8 +198,8 @@ Examples of what NOT to answer:
               />
             </div>
             <div>
-              <h3 className="text-white font-semibold text-sm">Agrocare</h3>
-              <p className="text-green-200 text-xs">
+              <h3 className="text-white font-medium text-sm">Agrocare</h3>
+              <p className="text-green-200 text-xs font-normal">
                 Leafy - Your personal assistant
               </p>
             </div>
@@ -238,11 +237,11 @@ Examples of what NOT to answer:
               <div
                 className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
                   message.sender === "user"
-                    ? "bg-white text-gray-800 rounded-br-sm shadow-md"
+                    ? "bg-white text-gray-800 rounded-br-xs shadow-md"
                     : "bg-[#1c352d] text-white rounded-tl-sm shadow-md"
                 }`}
               >
-                <p className="text-sm leading-relaxed whitespace-pre-line">
+                <p className="text-xs font-normal leading-relaxed whitespace-pre-line">
                   {message.text}
                 </p>
               </div>
@@ -300,7 +299,7 @@ Examples of what NOT to answer:
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Write your question..."
-              className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-full text-sm focus:outline-none focus:border-[#1c352d] transition-colors"
+              className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-full text-sm font-normal focus:outline-none focus:border-[#1c352d] transition-colors placeholder:font-light"
             />
             <button
               onClick={handleSendMessage}

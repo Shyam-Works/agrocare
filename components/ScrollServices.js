@@ -20,6 +20,7 @@ import { useRouter } from "next/router";
  */
 
 
+
 const ServiceSection = ({ service }) => {
   const [isVisible, setIsVisible] = React.useState(false);
   const sectionRef = React.useRef(null);
@@ -174,6 +175,10 @@ const ScrollServices = ({ servicesData }) => {
         style={{
           color: "#283618",
           backgroundColor: "#ffffff",
+          fontFamily: '"Open Sans", sans-serif',
+          fontOpticalSizing: "auto",
+          fontWeight: 900,
+          fontStyle: "normal",
         }}
       >
         Explore Our AI-Driven Solutions

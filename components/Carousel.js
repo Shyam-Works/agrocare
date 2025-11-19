@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useRef, useEffect } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const Carousel = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -7,11 +7,11 @@ const Carousel = () => {
   const scrollContainerRef = useRef(null);
 
   const plants = [
-    { src: '/flower.jpg', name: 'Flower', alt: 'Beautiful flower' },
-    { src: '/tree.png', name: 'Tree', alt: 'Healthy tree' },
-    { src: '/wild-plant.jpg', name: 'Wild Plant', alt: 'Wild plant' },
-    { src: '/succulents.png', name: 'Succulents', alt: 'Succulent plants' },
-    { src: '/garden-plant.png', name: 'Garden Plant', alt: 'Garden plant' },
+    { src: "/flower.jpg", name: "Flower", alt: "Beautiful flower" },
+    { src: "/tree.png", name: "Tree", alt: "Healthy tree" },
+    { src: "/wild-plant.jpg", name: "Wild Plant", alt: "Wild plant" },
+    { src: "/succulents.png", name: "Succulents", alt: "Succulent plants" },
+    { src: "/garden-plant.png", name: "Garden Plant", alt: "Garden plant" },
   ];
 
   const imagesPerView = 4;
@@ -19,7 +19,7 @@ const Carousel = () => {
 
   const scrollToIndex = (index) => {
     if (isTransitioning) return;
-    
+
     const newIndex = Math.max(0, Math.min(index, maxIndex));
     setCurrentIndex(newIndex);
     setIsTransitioning(true);
@@ -29,7 +29,7 @@ const Carousel = () => {
       const imageWidth = container.scrollWidth / plants.length;
       container.scrollTo({
         left: imageWidth * newIndex,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
     }
 
@@ -56,12 +56,24 @@ const Carousel = () => {
       }
     };
 
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
   }, [isTransitioning, plants.length]);
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+
+
+
+    <div
+      className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
+      style={{
+        fontFamily: '"Open Sans", sans-serif',
+        fontStyle: "normal",
+        fontOpticalSizing: "auto"
+        
+      }}
+    >
+
       {/* Header */}
       <div className="text-center mb-8">
         <h2 className="text-5xl font-bold text-[#fefae0] mb-2">
@@ -80,8 +92,8 @@ const Carousel = () => {
           disabled={currentIndex === 0}
           className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-white/90 backdrop-blur-sm shadow-lg transition-all duration-300 ${
             currentIndex === 0
-              ? 'opacity-0 cursor-not-allowed'
-              : 'opacity-0 group-hover:opacity-100 hover:bg-[#1c352d] hover:text-white'
+              ? "opacity-0 cursor-not-allowed"
+              : "opacity-0 group-hover:opacity-100 hover:bg-[#1c352d] hover:text-white"
           }`}
           aria-label="Previous images"
         >
@@ -93,8 +105,8 @@ const Carousel = () => {
           disabled={currentIndex >= maxIndex}
           className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-white/90 backdrop-blur-sm shadow-lg transition-all duration-300 ${
             currentIndex >= maxIndex
-              ? 'opacity-0 cursor-not-allowed'
-              : 'opacity-0 group-hover:opacity-100 hover:bg-[#1c352d] hover:text-white'
+              ? "opacity-0 cursor-not-allowed"
+              : "opacity-0 group-hover:opacity-100 hover:bg-[#1c352d] hover:text-white"
           }`}
           aria-label="Next images"
         >
@@ -106,7 +118,7 @@ const Carousel = () => {
           ref={scrollContainerRef}
           // Changed: Added overflow-y-hidden to explicitly prevent vertical scrolling.
           className="overflow-x-auto overflow-y-hidden scrollbar-hide scroll-smooth"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           <div className="flex gap-4 px-2">
             {plants.map((plant, index) => (
@@ -149,8 +161,8 @@ const Carousel = () => {
               onClick={() => scrollToIndex(index)}
               className={`h-2 rounded-full transition-all duration-300 ${
                 index === currentIndex
-                  ? 'w-8 bg-[#1c352d]'
-                  : 'w-2 bg-gray-300 hover:bg-gray-400'
+                  ? "w-8 bg-[#1c352d]"
+                  : "w-2 bg-gray-300 hover:bg-gray-400"
               }`}
               aria-label={`Go to slide ${index + 1}`}
             />
@@ -160,9 +172,7 @@ const Carousel = () => {
 
       {/* Mobile scroll hint */}
       <div className="text-center mt-4 md:hidden">
-        <p className="text-sm text-gray-500">
-          Swipe to see more →
-        </p>
+        <p className="text-sm text-gray-500">Swipe to see more →</p>
       </div>
 
       <style jsx>{`

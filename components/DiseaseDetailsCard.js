@@ -256,6 +256,23 @@ const DiseaseDetailsCard = ({ details, loading, diseaseName }) => {
               </ul>
             </div>
           )}
+
+          {/* Recovery Time */}
+          {details.recovery_time && (
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+              <div className="flex items-start space-x-3">
+                <Clock className="w-6 h-6 text-blue-600 flex-shrink-0" />
+                <div>
+                  <h4 className="font-bold text-blue-900 mb-1">
+                    Recovery Time
+                  </h4>
+                  <p className="text-blue-800 text-sm">
+                    {details.recovery_time}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Column - Treatment & Prevention */}
@@ -322,22 +339,8 @@ const DiseaseDetailsCard = ({ details, loading, diseaseName }) => {
             </div>
           )}
 
-          {/* Recovery Time */}
-          {details.recovery_time && (
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-              <div className="flex items-start space-x-3">
-                <Clock className="w-6 h-6 text-blue-600 flex-shrink-0" />
-                <div>
-                  <h4 className="font-bold text-blue-900 mb-1">
-                    Recovery Time
-                  </h4>
-                  <p className="text-blue-800 text-sm">
-                    {details.recovery_time}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          
+
         </div>
       </div>
     </motion.div>

@@ -56,11 +56,17 @@ const StatsSection = () => {
       ref={sectionRef}
       className="relative py-16 md:py-15 bg-[#ffffff] flex flex-col items-center text-center"
     >
-      <h2 className="text-4xl md:text-7xl font-extrabold text-[#DDA15E] mb-10">
+      <h2 className="text-4xl md:text-7xl font-extrabold text-[#DDA15E] mb-10" style={{fontFamily: '"Open Sans", sans-serif',
+                fontOpticalSizing: "auto",
+                fontWeight: 900,
+                fontStyle: "normal",}}>
         Performance Stats
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center" style={{fontFamily: '"Open Sans", sans-serif',
+                fontOpticalSizing: "auto",
+                fontWeight: 900,
+                fontStyle: "normal",}}>
         {stats.map((stat, i) => (
           <div key={i}>
             <div

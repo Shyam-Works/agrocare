@@ -47,7 +47,7 @@ const AIScanDemonstrator = () => {
   return (
     <section
       className="relative py-16 md:py-24 overflow-hidden"
-      style={{ backgroundColor: "#f0ead2" }}
+      style={{ backgroundColor: "#f0ead2", borderTopLeftRadius: "50px", borderTopRightRadius: "50px" }}
     >
       {/* Overlay */}
       <div className="absolute inset-0 bg-green-950 opacity-10"></div>
@@ -57,19 +57,24 @@ const AIScanDemonstrator = () => {
         <div className="max-w-3xl mx-auto">
           <h2
             className="text-4xl md:text-5xl font-extrabold mb-6 leading-tight"
-            style={{ color: "#283618" }}
+            style={{ color: "#283618", fontFamily: '"Arial", Gadget, sans-serif',
+              
+              fontWeight: 700, }}
           >
             Real Farmers, Real Results
           </h2>
           <p
             className="text-xl max-w-2xl mx-auto mb-10"
-            style={{ color: "#283618", opacity: 0.8 }}
+            style={{ color: "#283618", opacity: 0.8, fontFamily: '"Arial", Gadget, sans-serif',
+              
+              fontWeight: 400, }}
           >
             More than just precise and efficient, our AI is transforming agriculture by driving measurable yield improvements worldwide. Discover insights from our farming community.
           </p>
         </div>
 
         {/* Infinite Scroll Section */}
+        
         <div className="relative w-full overflow-hidden">
           <div className="scroll-track flex space-x-8 md:space-x-10">
             {/* Duplicate the testimonials twice for seamless looping */}
