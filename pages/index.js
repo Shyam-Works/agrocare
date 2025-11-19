@@ -16,24 +16,25 @@ import ChatBot from "@/components/Chatbot";
 import StatsSection from "@/components/StatsSection";
 import MobileChatPage from "@/components/MobileChatPage";
 import AIScanDemonstrator from "@/components/AIScanDemonstrator";
+import Footer from "@/components/Footer";
 
-// Custom styles for hiding scrollbar
-const customStyles = `
-  /* Hide scrollbar for Chrome, Safari and Opera */
-  ::-webkit-scrollbar {
-    display: none;
-  }
-  
-  /* Hide scrollbar for IE, Edge and Firefox */
-  * {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  
-  body {
-    overflow-x: hidden;
-  }
-`;
+// Custom styles for hiding scrollbar - REMOVED TO ENABLE SCROLLBAR
+// const customStyles = `
+//   /* Hide scrollbar for Chrome, Safari and Opera */
+//   ::-webkit-scrollbar {
+//     display: none;
+//   }
+
+//   /* Hide scrollbar for IE, Edge and Firefox */
+//   * {
+//     -ms-overflow-style: none;
+//     scrollbar-width: none;
+//   }
+
+//   body {
+//     overflow-x: hidden;
+//   }
+// `;
 
 // Define service data with Icon component references
 const servicesData = [
@@ -46,7 +47,7 @@ const servicesData = [
     image: "/plant-identify.JPG",
     buttonText: "Identify Now",
     content: [
-      "Instantly identify over 10,000 plant species with 98% accuracy using advanced computer vision technology trained on millions of botanical images. Simply snap a photo and get detailed information on care, growth habits, and ideal growing conditions. Perfect for gardeners, farmers, and plant enthusiasts of all levels. With continuous AI learning, AgroCare improves its accuracy with every scan.",
+      "Instantly identify over 10,000 plant species with 98% accuracy using advanced computer vision technology trained on millions of botanical images. Simply snap a photo and get detailed information on care, growth habits, and ideal growing conditions. Perfect for gardeners, farmers, and plant enthusiasts of all levels.",
     ],
   },
   {
@@ -58,7 +59,7 @@ const servicesData = [
     image: "/disease-diagnoses.JPG",
     buttonText: "Diagnose Now",
     content: [
-      "Quickly detect and diagnose plant diseases with AI-powered image analysis trained on thousands of crop health cases. Upload a photo of affected leaves or stems to receive accurate results with tailored treatment recommendations. Prevent yield loss, reduce chemical dependency, and safeguard your crops with reliable, science-driven guidance.",
+      "Quickly detect and diagnose plant diseases with AI-powered image analysis trained on thousands of crop health cases. Upload a photo of affected leaves to receive accurate results with tailored treatment recommendations. Prevent yield loss, reduce chemical dependency, and safeguard your crops with science-driven guidance.",
     ],
   },
   {
@@ -70,7 +71,7 @@ const servicesData = [
     image: "/dashboard.JPG",
     buttonText: "Try Dashboard",
     content: [
-      "Track plant health daily with real-time updates and AI-powered insights. Monitor environmental conditions like soil, light, and weather while keeping a log of your activities and tasks. Gain personalized recommendations to optimize farming practices, improve efficiency, and maximize yields with data-driven decision making.Stay ahead of issues with early disease detection and smart care tips for healthier crops.",
+      "Track plant health daily with real-time updates and AI-powered insights. Monitor environmental conditions like soil, light, and weather while keeping a log of your activities and tasks. Gain personalized recommendations to optimize farming practices, improve efficiency, and maximize yields with data-driven decision making.",
     ],
   },
   {
@@ -88,45 +89,43 @@ const servicesData = [
 ];
 
 const HomePage = () => {
+  const options = [
+    "Agriculture Intelligence",
+    "Artificial Intelligence",
+    "Agrocare Intelligence",
+  ];
 
-const options = [
-  "Agriculture Intelligence",
-  "Artificial Intelligence",
-  "Agrocare Intelligence",
-];
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-const [currentIndex, setCurrentIndex] = useState(0);
-const [charIndex, setCharIndex] = useState(0);
-const [isDeleting, setIsDeleting] = useState(false);
-
-useEffect(() => {
-  const currentWord = options[currentIndex];
-  const timeout = setTimeout(() => {
-    if (!isDeleting && charIndex < currentWord.length) {
-      setCharIndex(charIndex + 1);
-    } else if (isDeleting && charIndex > 0) {
-      setCharIndex(charIndex - 1);
-    } else if (!isDeleting && charIndex === currentWord.length) {
-      setTimeout(() => setIsDeleting(true), 1500); // pause before deleting
-    } else if (isDeleting && charIndex === 0) {
-      setIsDeleting(false);
-      setCurrentIndex((prev) => (prev + 1) % options.length);
-    }
-  }, isDeleting ? 50 : 50); // faster when deleting
-  
-  return () => clearTimeout(timeout);
-}, [charIndex, isDeleting, currentIndex]);
-
-
-  // Inject custom styles for scrollbar hiding
   useEffect(() => {
-    const styleElement = document.createElement("style");
-    styleElement.innerHTML = customStyles;
-    document.head.appendChild(styleElement);
+    const currentWord = options[currentIndex];
+    const timeout = setTimeout(() => {
+      if (!isDeleting && charIndex < currentWord.length) {
+        setCharIndex(charIndex + 1);
+      } else if (isDeleting && charIndex > 0) {
+        setCharIndex(charIndex - 1);
+      } else if (!isDeleting && charIndex === currentWord.length) {
+        setTimeout(() => setIsDeleting(true), 1500); // pause before deleting
+      } else if (isDeleting && charIndex === 0) {
+        setIsDeleting(false);
+        setCurrentIndex((prev) => (prev + 1) % options.length);
+      }
+    }, isDeleting ? 50 : 50); // faster when deleting
 
-    return () => {
-      document.head.removeChild(styleElement);
-    };
+    return () => clearTimeout(timeout);
+  }, [charIndex, isDeleting, currentIndex]);
+
+  // Inject custom styles for scrollbar hiding - MODIFIED TO REMOVE HIDING LOGIC
+  useEffect(() => {
+    // The previous code block that injected `customStyles` has been removed.
+    // If you need to ensure horizontal overflow is explicitly allowed/managed,
+    // you could still modify the body overflow-x.
+    
+    // As per the original setup, `overflow-x: hidden;` was applied to `body` in the
+    // now-removed `customStyles`. To truly restore the *default* browser behavior,
+    // we should remove the logic that injected scrollbar-hiding CSS.
   }, []);
 
   // Parallax animation logic
@@ -195,7 +194,10 @@ useEffect(() => {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden">
+    // REMOVED 'overflow-x-hidden' from the main div to help restore scrollbar visibility,
+    // although the main culprit was the custom styles in the useEffect. Keeping it as
+    // 'min-h-screen' allows the browser to manage overflow.
+    <div className="min-h-screen"> 
       <Navbar />
 
       <style jsx>{`
@@ -364,46 +366,48 @@ useEffect(() => {
               Nurturing Growth with AI
             </h2>
             {/* Description */}
-<p
-  className="text-base sm:text-lg md:text-xl font-normal leading-relaxed mb-6 sm:mb-8 max-w-xl"
-  style={{
-    color: "#272727ff",
-    fontFamily: '"Open Sans", sans-serif',
-    fontOpticalSizing: "auto",
-    fontWeight: 400,
-    fontStyle: "normal",
-    fontVariationSettings: '"wdth" 100',
-    opacity: 0.80,
-  }}
->
-  Empowering farmers to grow smarter and healthier crops through{" "}
-  <span className="inline-block relative" style={{ minWidth: "280px" }}>
-    <span
-  style={{
-    fontWeight: 600,
-    background: "linear-gradient(90deg, #0eaa76ff, #06b6d4, #3b57f6ff, #06b6d4, #10b981)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-    backgroundClip: "text",
-    backgroundSize: "200% auto",
-    animation: "shimmer 3s linear infinite",
-  }}
->
-      {options[currentIndex].substring(0, charIndex)}
-      <span 
-        className="animate-pulse"
-        style={{
-          background: "linear-gradient(90deg, #0eaa76ff, #06b6d4, #3b57f6ff, #06b6d4, #10b981)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          backgroundClip: "text",
-        }}
-      >
-        |
-      </span>
-    </span>
-  </span>
-</p>
+            <p
+              className="text-base sm:text-lg md:text-xl font-normal leading-relaxed mb-6 sm:mb-8 max-w-xl"
+              style={{
+                color: "#272727ff",
+                fontFamily: '"Open Sans", sans-serif',
+                fontOpticalSizing: "auto",
+                fontWeight: 400,
+                fontStyle: "normal",
+                fontVariationSettings: '"wdth" 100',
+                opacity: 0.8,
+              }}
+            >
+              Empowering farmers to grow smarter and healthier crops through{" "}
+              <span className="inline-block relative" style={{ minWidth: "280px" }}>
+                <span
+                  style={{
+                    fontWeight: 600,
+                    background:
+                      "linear-gradient(90deg, #0eaa76ff, #06b6d4, #3b57f6ff, #06b6d4, #10b981)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                    backgroundSize: "200% auto",
+                    animation: "shimmer 3s linear infinite",
+                  }}
+                >
+                  {options[currentIndex].substring(0, charIndex)}
+                  <span
+                    className="animate-pulse"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, #0eaa76ff, #06b6d4, #3b57f6ff, #06b6d4, #10b981)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text",
+                    }}
+                  >
+                    |
+                  </span>
+                </span>
+              </span>
+            </p>
             {/* Button */}
             <button className="group bg-white/50 text-[#283618] px-6 sm:px-8 py-3 sm:py-4 rounded-full font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center gap-2">
               Get Started
@@ -416,58 +420,66 @@ useEffect(() => {
       {/* Mission Section and Parallax Photos */}
       <section
         className="py-12 sm:py-16 md:py-20"
-        style={{ backgroundColor: "#283618" }}
+        style={{
+          backgroundColor: "#283618",
+          borderBottomLeftRadius: "50px",
+          borderBottomRightRadius: "50px",
+        }}
       >
-        <div className="max-w-7xl mx-auto px-2 sm:px-4"> {/* reduced side padding */}
-    <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 items-start">
-      {/* Left Content */}
-      <div className="space-y-6 sm:space-y-8 -ml-4 sm:-ml-8"> {/* shifted left */}
-        <div>
-          <h2
-            className="mission-title text-left mb-4 sm:mb-6"
-            style={{
-              fontFamily: '"Arial Black", Gadget, sans-serif',
-              fontSize: "clamp(24px, 5vw, 40px)",
-              letterSpacing: "-1.6px",
-              wordSpacing: "-2.6px",
-              color: "#f0ead2",
-              fontWeight: 400,
-              textDecoration: "rgb(68, 68, 68)",
-              fontStyle: "normal",
-              fontVariant: "small-caps",
-              textTransform: "capitalize",
-              lineHeight: "1.2",
-            }}
-          >
-            Every leaf tells a story <br />
-            Agrocare helps you read it and act in time.
-          </h2>
-        </div>
-        <div className="space-y-2 text-base sm:text-lg text-gray-700 leading-relaxed">
-          <p
-            className="mission-p1 transition-colors duration-300 cursor-default text-left"
-            style={{
-              fontFamily: '"Arial", Gadget, sans-serif',
-              fontSize: "clamp(18px, 3.5vw, 24px)",
-              fontWeight: 400,
-              color: "#fefae0",
-              lineHeight: "1.8",
-            }}
-          >
-            At{" "}
-            <span className="font-bold" style={{ color: "#b38a58" }}>
-              AgroCare
-            </span>
-            , we are dedicated to supporting the agriculture industry through
-            smart, user-friendly technology. Our AI-powered platform delivers
-            farmers and agricultural professionals timely, practical insights for
-            monitoring crop health. From identifying diseases in early stages to
-            providing targeted treatment guidance, help increase harvests,
-            minimize crop losses, and promote sustainable farming practices for
-            the future.
-          </p>
-        </div>
-      </div>
+        <div className="max-w-7xl mx-auto px-2 sm:px-4">
+          {" "}
+          {/* reduced side padding */}
+          <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 items-start">
+            {/* Left Content */}
+            <div className="space-y-6 sm:space-y-8 -ml-4 sm:-ml-8">
+              {" "}
+              {/* shifted left */}
+              <div>
+                <h2
+                  className="mission-title text-left mb-4 sm:mb-6"
+                  style={{
+                    fontFamily: '"Arial Black", Gadget, sans-serif',
+                    fontSize: "clamp(24px, 5vw, 40px)",
+                    letterSpacing: "-1.6px",
+                    wordSpacing: "-2.6px",
+                    color: "#f0ead2",
+                    fontWeight: 400,
+                    textDecoration: "rgb(68, 68, 68)",
+                    fontStyle: "normal",
+                    fontVariant: "small-caps",
+                    textTransform: "capitalize",
+                    lineHeight: "1.2",
+                  }}
+                >
+                  Every leaf tells a story <br />
+                  Agrocare helps you read it and act in time.
+                </h2>
+              </div>
+              <div className="space-y-2 text-base sm:text-lg text-gray-700 leading-relaxed">
+                <p
+                  className="mission-p1 transition-colors duration-300 cursor-default text-left"
+                  style={{
+                    fontFamily: '"Open Sans", sans-serif',
+                    fontSize: "clamp(18px, 3.5vw, 22px)",
+                    fontWeight: 100,
+                    color: "#fefae0",
+                    lineHeight: "1.8",
+                  }}
+                >
+                  At{" "}
+                  <span className="font-bold" style={{ color: "#b38a58" }}>
+                    AgroCare
+                  </span>
+                  , we are dedicated to supporting the agriculture industry through
+                  smart, user-friendly technology. Our AI-powered platform delivers
+                  farmers and agricultural professionals timely, practical insights for
+                  monitoring crop health. From identifying diseases in early stages to
+                  providing targeted treatment guidance, help increase harvests,
+                  minimize crop losses, and promote sustainable farming practices for
+                  the future.
+                </p>
+              </div>
+            </div>
 
             {/* Right Photo Columns */}
             <div className="photo-columns">
@@ -488,7 +500,6 @@ useEffect(() => {
                   </div>
                   <div className="photo-item">
                     <img
-                    
                       src="https://images.unsplash.com/photo-1694893987195-d395cba654f6?w=600"
                       alt="Plant seedlings"
                     />
@@ -522,7 +533,6 @@ useEffect(() => {
                   </div>
                   <div className="photo-item">
                     <img
-                    
                       src="https://images.unsplash.com/photo-1673383855021-b1ccd8b3f1d0?w=600"
                       alt="Greenhouse plants"
                     />
@@ -550,7 +560,6 @@ useEffect(() => {
                   </div>
                   <div className="photo-item">
                     <img
-                    
                       src="https://images.unsplash.com/photo-1599622100212-954e6358038d??w=600"
                       alt="Garden tools"
                     />
@@ -563,7 +572,6 @@ useEffect(() => {
                   </div>
                   <div className="photo-item">
                     <img
-                    
                       src="https://images.unsplash.com/photo-1754841738097-ccfcbc3c70b0??w=600"
                       alt="Crop field"
                     />
@@ -586,7 +594,7 @@ useEffect(() => {
 
       <StatsSection servicesData={servicesData} />
 
-            <AIScanDemonstrator />
+      <AIScanDemonstrator />
 
       <>{isMobile ? <MobileChatPage /> : <ChatBot />}</>
 
@@ -594,11 +602,9 @@ useEffect(() => {
       <section style={{ backgroundColor: "#283618" }}>
         <Carousel />
       </section>
+      <Footer />
     </div>
   );
 };
-
-
-
 
 export default HomePage;

@@ -1,4 +1,4 @@
-// pages/identification.js - WITH INSECT SUPPORT
+// pages/identification.js - WITH COMPREHENSIVE SESSION STORAGE
 
 import React, { useState, useEffect } from "react";
 import {
@@ -29,16 +29,79 @@ import InsectDetailsCard from "@/components/InsectDetailsCard";
 import PlantDetailsCard from "@/components/PlantDetailsCard";
 import ImageModal from "@/components/ImageModal";
 import MobileChatPage from "@/components/MobileChatPage";
-// --- ANIMATION VARIANTS ---
-const cardVariants = {
-  hidden: { opacity: 0, y: 20, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { type: "spring", stiffness: 100, damping: 20, duration: 0.5 },
-  },
+import PlantCard from "@/components/PlantCard"; // NEW IMPORT
+
+// --- SESSION STORAGE KEYS ---
+const STORAGE_KEYS = {
+  RESULT: 'identificationResult',
+  IMAGE_PREVIEW: 'imagePreview',
+  PLANT_DETAILS: 'plantDetails',
+  ACTIVE_TAB: 'activeTab',
+  SEARCH_QUERY: 'searchQuery',
+  SEARCH_RESULTS: 'searchResults',
+  SHOW_SEARCH_RESULTS: 'showSearchResults',
+  SELECTED_IMAGE_DATA: 'selectedImageData',
+  ERROR: 'identificationError',
+  LOADING_DETAILS: 'loadingDetails'
 };
+
+// --- SESSION STORAGE HELPERS ---
+const SessionStorage = {
+  set: (key, value) => {
+    try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(key, JSON.stringify(value));
+      }
+    } catch (error) {
+      console.error(`Error saving to sessionStorage (${key}):`, error);
+    }
+  },
+  
+  get: (key, defaultValue = null) => {
+  try {
+    if (typeof window !== 'undefined') {
+      const item = sessionStorage.getItem(key);
+      if (!item) return defaultValue;
+      
+      // Try to parse as JSON, if it fails, return the raw string
+      try {
+        return JSON.parse(item);
+      } catch {
+        return item; // Return raw string if not valid JSON
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading from sessionStorage (${key}):`, error);
+  }
+  return defaultValue;
+},
+  
+  remove: (key) => {
+    try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.error(`Error removing from sessionStorage (${key}):`, error);
+    }
+  },
+  
+  clear: () => {
+    try {
+      if (typeof window !== 'undefined') {
+        // Clear all identification-related keys
+        Object.values(STORAGE_KEYS).forEach(key => {
+          sessionStorage.removeItem(key);
+        });
+      }
+    } catch (error) {
+      console.error('Error clearing sessionStorage:', error);
+    }
+  }
+};
+
+// --- ANIMATION VARIANTS ---
+// cardVariants removed and moved to components/PlantCard.js
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -60,127 +123,8 @@ const detailVariants = {
   },
 };
 
-// --- PlantCard Component ---
-const PlantCard = ({ plant, isMainResult = false, index = 0, activeTab }) => {
-  const [imageError, setImageError] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [selectedImage, setSelectedImage] = useState(null);
+// --- PlantCard Component Removed --- (Now in components/PlantCard.js)
 
-  let images = [];
-  if (plant.similar_images && plant.similar_images.length > 0) {
-    images = plant.similar_images;
-  }
-
-  const hasValidImage = images.length > 0 && !imageError;
-  const currentImage = hasValidImage ? images[currentImageIndex] : null;
-
-  const handleImageError = () => {
-    if (currentImageIndex < images.length - 1) {
-      setCurrentImageIndex(currentImageIndex + 1);
-    } else {
-      setImageError(true);
-    }
-  };
-
-  const handleImageClick = () => {
-    if (hasValidImage && currentImage) {
-      setSelectedImage(currentImage.url);
-    }
-  };
-
-  const confidence = isMainResult ? plant.confidence : plant.probability;
-  const confidenceColorClass = isMainResult ? "bg-green-700" : "bg-amber-600";
-  const textClass = isMainResult ? "text-green-900" : "text-amber-800";
-
-  return (
-    <>
-      <motion.div
-        variants={cardVariants}
-        className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden transform hover:translate-y-[-2px] transition-all duration-300 group flex h-auto items-stretch"
-      >
-        <div
-          className="w-32 h-full bg-sand-100 relative flex-shrink-0 cursor-pointer overflow-hidden"
-          onClick={handleImageClick}
-        >
-          {hasValidImage && currentImage ? (
-            <img
-              src={currentImage.url}
-              alt={plant.name || plant.identified_name}
-              className="w-full h-full object-cover transition-transform duration-500"
-              onError={handleImageError}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-sand-100 to-sand-200 p-2">
-              <div className="text-center">
-                {activeTab === "Plants" ? (
-                  <Leaf className="w-7 h-7 text-sand-500 mx-auto mb-1" />
-                ) : (
-                  <Bug className="w-7 h-7 text-sand-500 mx-auto mb-1" />
-                )}
-                <p className="text-[11px] text-sand-700 font-medium px-1 leading-tight">
-                  {plant.name || plant.identified_name || "Unknown"}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="p-3 bg-sand-50 flex flex-grow justify-between items-center min-h-[120px]">
-          <div className="flex flex-col justify-center flex-grow pr-4 w-0">
-            <h3 className="text-lg font-bold text-gray-800 leading-tight mb-2 break-words">
-              {plant.name || plant.identified_name || "Alternative Match"}
-            </h3>
-
-            <div className="mb-2 flex items-center w-full">
-              <span className="text-xs font-semibold text-gray-500 mr-2 flex-shrink-0">
-                Category:
-              </span>
-              <span
-                className={`bg-sand-200 ${textClass} px-3 py-0.5 rounded-full text-xs font-medium break-words`}
-              >
-                {plant.category || activeTab}
-              </span>
-            </div>
-
-            <div className="w-full">
-              <span className="text-xs text-gray-600 font-medium block mb-1">
-                Match Confidence
-              </span>
-              <div className="w-full bg-sand-300 rounded-full h-1.5">
-                <div
-                  className={`h-1.5 rounded-full transition-all duration-700 ${
-                    isMainResult ? "bg-green-600" : "bg-amber-500"
-                  }`}
-                  style={{ width: `${confidence * 100}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-shrink-0 self-center pl-4 border-l border-gray-100">
-            <div
-              className={`flex flex-col items-center justify-center w-16 h-16 rounded-xl shadow-inner ${confidenceColorClass} transition-all duration-300`}
-            >
-              <span className="text-2xl font-extrabold text-white leading-none">
-                {(confidence * 100).toFixed(0)}
-              </span>
-              <span className="text-xs font-semibold text-green-200 mt-0.5">
-                MATCH %
-              </span>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      <ImageModal
-        isOpen={!!selectedImage}
-        imageUrl={selectedImage}
-        plantName={plant.name || plant.identified_name}
-        onClose={() => setSelectedImage(null)}
-      />
-    </>
-  );
-};
 
 const IdentificationPage = () => {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -199,7 +143,9 @@ const IdentificationPage = () => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
 
+  // Initialize client-side and check mobile
   useEffect(() => {
     setIsClient(true);
 
@@ -213,26 +159,68 @@ const IdentificationPage = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Restore complete session state on mount
   useEffect(() => {
-    const savedResult = sessionStorage.getItem("identificationResult");
-    const savedImagePreview = sessionStorage.getItem("imagePreview");
-    const savedPlantDetails = sessionStorage.getItem("plantDetails");
-    const savedActiveTab = sessionStorage.getItem("activeTab");
+    if (!isClient) return;
 
-    if (savedResult) {
-      setResult(JSON.parse(savedResult));
-    }
-    if (savedImagePreview) {
-      setImagePreview(savedImagePreview);
-    }
-    if (savedPlantDetails) {
-      setPlantDetails(JSON.parse(savedPlantDetails));
-    }
-    if (savedActiveTab) {
-      setActiveTab(savedActiveTab);
-    }
-  }, []);
+    console.log('🔄 Restoring session state...');
+    
+    try {
+      // Restore all state from sessionStorage
+      const savedResult = SessionStorage.get(STORAGE_KEYS.RESULT);
+      const savedImagePreview = SessionStorage.get(STORAGE_KEYS.IMAGE_PREVIEW);
+      const savedPlantDetails = SessionStorage.get(STORAGE_KEYS.PLANT_DETAILS);
+      const savedActiveTab = SessionStorage.get(STORAGE_KEYS.ACTIVE_TAB);
+      const savedSearchQuery = SessionStorage.get(STORAGE_KEYS.SEARCH_QUERY);
+      const savedSearchResults = SessionStorage.get(STORAGE_KEYS.SEARCH_RESULTS);
+      const savedShowSearchResults = SessionStorage.get(STORAGE_KEYS.SHOW_SEARCH_RESULTS);
+      const savedError = SessionStorage.get(STORAGE_KEYS.ERROR);
+      const savedLoadingDetails = SessionStorage.get(STORAGE_KEYS.LOADING_DETAILS);
 
+      // Restore states
+      if (savedResult) {
+        setResult(savedResult);
+        console.log('✅ Restored result:', savedResult.identified_name);
+      }
+      if (savedImagePreview) {
+        setImagePreview(savedImagePreview);
+        console.log('✅ Restored image preview');
+      }
+      if (savedPlantDetails) {
+        setPlantDetails(savedPlantDetails);
+        console.log('✅ Restored plant/insect details');
+      }
+      if (savedActiveTab) {
+        setActiveTab(savedActiveTab);
+        console.log('✅ Restored active tab:', savedActiveTab);
+      }
+      if (savedSearchQuery) {
+        setSearchQuery(savedSearchQuery);
+        console.log('✅ Restored search query:', savedSearchQuery);
+      }
+      if (savedSearchResults) {
+        setSearchResults(savedSearchResults);
+        console.log('✅ Restored search results');
+      }
+      if (savedShowSearchResults !== null) {
+        setShowSearchResults(savedShowSearchResults);
+      }
+      if (savedError) {
+        setError(savedError);
+      }
+      if (savedLoadingDetails !== null) {
+        setLoadingDetails(savedLoadingDetails);
+      }
+
+      console.log('✅ Session restoration complete');
+    } catch (error) {
+      console.error('❌ Error restoring session:', error);
+    } finally {
+      setIsRestoringSession(false);
+    }
+  }, [isClient]);
+
+  // Fetch user session
   useEffect(() => {
     fetch("/api/auth/session")
       .then((res) => res.json())
@@ -255,8 +243,78 @@ const IdentificationPage = () => {
       });
   }, []);
 
+  // Auto-save states to sessionStorage whenever they change
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    if (result) {
+      SessionStorage.set(STORAGE_KEYS.RESULT, result);
+    }
+  }, [result, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    if (imagePreview) {
+      SessionStorage.set(STORAGE_KEYS.IMAGE_PREVIEW, imagePreview);
+    }
+  }, [imagePreview, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    if (plantDetails) {
+      SessionStorage.set(STORAGE_KEYS.PLANT_DETAILS, plantDetails);
+    }
+  }, [plantDetails, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    SessionStorage.set(STORAGE_KEYS.ACTIVE_TAB, activeTab);
+  }, [activeTab, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    SessionStorage.set(STORAGE_KEYS.SEARCH_QUERY, searchQuery);
+  }, [searchQuery, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    if (searchResults) {
+      SessionStorage.set(STORAGE_KEYS.SEARCH_RESULTS, searchResults);
+    }
+  }, [searchResults, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    SessionStorage.set(STORAGE_KEYS.SHOW_SEARCH_RESULTS, showSearchResults);
+  }, [showSearchResults, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    if (error) {
+      SessionStorage.set(STORAGE_KEYS.ERROR, error);
+    } else {
+      SessionStorage.remove(STORAGE_KEYS.ERROR);
+    }
+  }, [error, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    SessionStorage.set(STORAGE_KEYS.LOADING_DETAILS, loadingDetails);
+  }, [loadingDetails, isClient, isRestoringSession]);
+
   // Clear identification results when switching between Plants and Insects tabs
   useEffect(() => {
+    // Don't clear on initial mount or during session restoration
+    if (isRestoringSession) return;
+
     setResult(null);
     setImagePreview(null);
     setSelectedImage(null);
@@ -267,9 +325,10 @@ const IdentificationPage = () => {
     setShowSearchResults(false);
 
     // Clear sessionStorage data for previous category
-    sessionStorage.removeItem("identificationResult");
-    sessionStorage.removeItem("imagePreview");
-    sessionStorage.removeItem("plantDetails");
+    SessionStorage.clear();
+    
+    // Save the new active tab
+    SessionStorage.set(STORAGE_KEYS.ACTIVE_TAB, activeTab);
   }, [activeTab]);
 
   const handleImageSelect = (file, previewUrl) => {
@@ -278,6 +337,11 @@ const IdentificationPage = () => {
     setResult(null);
     setError(null);
     setPlantDetails(null);
+    
+    // Clear related storage
+    SessionStorage.remove(STORAGE_KEYS.RESULT);
+    SessionStorage.remove(STORAGE_KEYS.PLANT_DETAILS);
+    SessionStorage.remove(STORAGE_KEYS.ERROR);
   };
 
   const uploadImage = async (file) => {
@@ -313,7 +377,7 @@ const IdentificationPage = () => {
       });
       const data = await response.json();
       setPlantDetails(data.details);
-      sessionStorage.setItem("plantDetails", JSON.stringify(data.details));
+      SessionStorage.set(STORAGE_KEYS.PLANT_DETAILS, data.details);
     } catch (error) {
       console.error("Error fetching plant details:", error);
     } finally {
@@ -332,8 +396,8 @@ const IdentificationPage = () => {
         body: JSON.stringify({ insectName }),
       });
       const data = await response.json();
-      setPlantDetails(data.details); // Using same state variable for consistency
-      sessionStorage.setItem("plantDetails", JSON.stringify(data.details));
+      setPlantDetails(data.details);
+      SessionStorage.set(STORAGE_KEYS.PLANT_DETAILS, data.details);
     } catch (error) {
       console.error("Error fetching insect details:", error);
     } finally {
@@ -351,7 +415,6 @@ const IdentificationPage = () => {
     setShowSearchResults(true);
 
     try {
-      // Determine which search API to use based on active tab
       const searchEndpoint =
         activeTab === "Plants"
           ? `/api/search-plant?q=${encodeURIComponent(
@@ -378,26 +441,27 @@ const IdentificationPage = () => {
 
       setSearchResults(searchData);
       setShowSearchResults(true);
+      
+      // Save search results to session
+      SessionStorage.set(STORAGE_KEYS.SEARCH_RESULTS, searchData);
+      SessionStorage.set(STORAGE_KEYS.SHOW_SEARCH_RESULTS, true);
     } catch (error) {
       console.error("Search error:", error);
-      setError(`${activeTab} search failed: ${error.message}`);
+      const errorMessage = `${activeTab} search failed: ${error.message}`;
+      setError(errorMessage);
       setSearchResults(null);
+      SessionStorage.set(STORAGE_KEYS.ERROR, errorMessage);
     } finally {
       setIsSearching(false);
     }
   };
 
   const handleSelectSearchResult = async (result) => {
-    activeTab === "Plants"
-      ? `/api/search-plant?q=${encodeURIComponent(
-          searchQuery.trim()
-        )}&limit=10&language=en`
-      : `/api/search-insect?q=${encodeURIComponent(
-          searchQuery.trim()
-        )}&limit=10&language=en`;
     console.log("Selected search result:", result);
     setShowSearchResults(false);
     setSearchQuery("");
+    SessionStorage.set(STORAGE_KEYS.SHOW_SEARCH_RESULTS, false);
+    SessionStorage.remove(STORAGE_KEYS.SEARCH_QUERY);
 
     // Immediately show the result card WITHOUT details
     const searchResult = {
@@ -420,10 +484,7 @@ const IdentificationPage = () => {
 
     console.log("Setting result state:", searchResult);
     setResult(searchResult);
-    sessionStorage.setItem(
-      "identificationResult",
-      JSON.stringify(searchResult)
-    );
+    SessionStorage.set(STORAGE_KEYS.RESULT, searchResult);
 
     // NOW fetch details in the background
     setLoadingDetails(true);
@@ -434,7 +495,6 @@ const IdentificationPage = () => {
         result.name
       );
 
-      // Determine which details API to use based on active tab
       const detailsEndpoint =
         activeTab === "Plants"
           ? "/api/get-plant-details"
@@ -459,21 +519,16 @@ const IdentificationPage = () => {
       const data = await response.json();
       console.log(`${activeTab} details received:`, data);
 
-      console.log(
-        `Setting ${activeTab.toLowerCase().slice(0, -1)} details:`,
-        data.details
-      );
       setPlantDetails(data.details);
-      sessionStorage.setItem("plantDetails", JSON.stringify(data.details));
+      SessionStorage.set(STORAGE_KEYS.PLANT_DETAILS, data.details);
     } catch (error) {
       console.error(
         `Error loading ${activeTab.toLowerCase().slice(0, -1)} details:`,
         error
       );
-      setError(
-        `Failed to load ${activeTab.toLowerCase().slice(0, -1)} details: ` +
-          error.message
-      );
+      const errorMessage = `Failed to load ${activeTab.toLowerCase().slice(0, -1)} details: ${error.message}`;
+      setError(errorMessage);
+      SessionStorage.set(STORAGE_KEYS.ERROR, errorMessage);
     } finally {
       setLoadingDetails(false);
     }
@@ -483,18 +538,24 @@ const IdentificationPage = () => {
     setSearchQuery("");
     setSearchResults(null);
     setShowSearchResults(false);
+    SessionStorage.remove(STORAGE_KEYS.SEARCH_QUERY);
+    SessionStorage.remove(STORAGE_KEYS.SEARCH_RESULTS);
+    SessionStorage.remove(STORAGE_KEYS.SHOW_SEARCH_RESULTS);
   };
 
   const handleIdentifySpecies = async () => {
     if (!selectedImage) return;
 
     if (!user) {
-      setError(`Please log in to identify ${activeTab.toLowerCase()}`);
+      const errorMessage = `Please log in to identify ${activeTab.toLowerCase()}`;
+      setError(errorMessage);
+      SessionStorage.set(STORAGE_KEYS.ERROR, errorMessage);
       return;
     }
 
     setUploading(true);
     setError(null);
+    SessionStorage.remove(STORAGE_KEYS.ERROR);
 
     try {
       const imageUrl = await uploadImage(selectedImage);
@@ -502,7 +563,6 @@ const IdentificationPage = () => {
       setUploading(false);
       setIdentifying(true);
 
-      // Determine which API endpoint to use based on active tab
       const apiEndpoint =
         activeTab === "Plants" ? "/api/identify-plant" : "/api/identify-insect";
 
@@ -526,12 +586,9 @@ const IdentificationPage = () => {
 
       const identificationResult = await response.json();
       setResult(identificationResult);
-      sessionStorage.setItem(
-        "identificationResult",
-        JSON.stringify(identificationResult)
-      );
-      sessionStorage.setItem("imagePreview", imagePreview);
-      sessionStorage.setItem("activeTab", activeTab);
+      SessionStorage.set(STORAGE_KEYS.RESULT, identificationResult);
+      SessionStorage.set(STORAGE_KEYS.IMAGE_PREVIEW, imagePreview);
+      SessionStorage.set(STORAGE_KEYS.ACTIVE_TAB, activeTab);
 
       // Fetch details based on type
       if (
@@ -541,14 +598,15 @@ const IdentificationPage = () => {
         if (activeTab === "Plants") {
           await fetchPlantDetails(identificationResult.identified_name);
         } else if (activeTab === "Insects") {
-          // Use OpenAI instead of Insect.id details
           await fetchInsectDetails(identificationResult.identified_name);
         }
       }
 
       console.log("Identification Result:", identificationResult);
     } catch (error) {
-      setError(error.message);
+      const errorMessage = error.message;
+      setError(errorMessage);
+      SessionStorage.set(STORAGE_KEYS.ERROR, errorMessage);
     } finally {
       setUploading(false);
       setIdentifying(false);
@@ -561,10 +619,7 @@ const IdentificationPage = () => {
     setResult(null);
     setError(null);
     setPlantDetails(null);
-    sessionStorage.removeItem("identificationResult");
-    sessionStorage.removeItem("imagePreview");
-    sessionStorage.removeItem("plantDetails");
-    sessionStorage.removeItem("activeTab");
+    SessionStorage.clear();
   };
 
   const tabs = ["Plants", "Insects"];
@@ -581,6 +636,18 @@ const IdentificationPage = () => {
   };
 
   const matchContainerStyle = { maxHeight: "540px" };
+
+  // Show loading state during session restoration
+  if (isRestoringSession) {
+    return (
+      <div className="min-h-screen bg-sand-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-green-700 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 font-semibold">Restoring session...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-sand-50">
@@ -647,7 +714,7 @@ const IdentificationPage = () => {
                 <div className="flex items-center space-x-4">
                   <Loader2 className="w-6 h-6 text-blue-700 animate-spin" />
                   <p className="text-blue-800 font-semibold">
-                    Loading plant details...
+                    Loading details...
                   </p>
                 </div>
               </motion.div>

@@ -9,6 +9,73 @@ import DiagnosisResults from "@/components/DiagnosisResults";
 import { useDiseaseDetails } from "@/components/useDiseaseDetails";
 import { useCommonDiseases } from "@/components/useCommonDiseases";
 
+// --- SESSION STORAGE KEYS ---
+const STORAGE_KEYS = {
+  IMAGE_PREVIEW: 'disease_imagePreview',
+  IMAGE_URL: 'disease_imageUrl',
+  RESULT: 'disease_result',
+  ERROR: 'disease_error',
+  DISEASE_DETAILS: 'disease_diseaseDetails',
+  SELECTED_DISEASE_INDEX: 'disease_selectedDiseaseIndex',
+  CURRENT_DIAGNOSIS_ID: 'disease_currentDiagnosisId',
+  COMMON_DISEASES: 'disease_commonDiseases'
+};
+
+// --- SESSION STORAGE HELPERS ---
+const SessionStorage = {
+  set: (key, value) => {
+    try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(key, JSON.stringify(value));
+      }
+    } catch (error) {
+      console.error(`Error saving to sessionStorage (${key}):`, error);
+    }
+  },
+  
+  get: (key, defaultValue = null) => {
+    try {
+      if (typeof window !== 'undefined') {
+        const item = sessionStorage.getItem(key);
+        if (!item) return defaultValue;
+        
+        // Try to parse as JSON, if it fails, return the raw string
+        try {
+          return JSON.parse(item);
+        } catch {
+          return item; // Return raw string if not valid JSON
+        }
+      }
+    } catch (error) {
+      console.error(`Error reading from sessionStorage (${key}):`, error);
+    }
+    return defaultValue;
+  },
+  
+  remove: (key) => {
+    try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.error(`Error removing from sessionStorage (${key}):`, error);
+    }
+  },
+  
+  clear: () => {
+    try {
+      if (typeof window !== 'undefined') {
+        // Clear all disease-related keys
+        Object.values(STORAGE_KEYS).forEach(key => {
+          sessionStorage.removeItem(key);
+        });
+      }
+    } catch (error) {
+      console.error('Error clearing sessionStorage:', error);
+    }
+  }
+};
+
 const DiseaseDiagnosisPage = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -21,9 +88,70 @@ const DiseaseDiagnosisPage = () => {
   const [selectedDiseaseIndex, setSelectedDiseaseIndex] = useState(0);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [currentDiagnosisId, setCurrentDiagnosisId] = useState(null);
+  const [isClient, setIsClient] = useState(false);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
 
   const { diseaseDetails, loadingDetails, fetchDiseaseDetails, setDiseaseDetails } = useDiseaseDetails();
   const { commonDiseases, loadingCommonDiseases, fetchCommonDiseases } = useCommonDiseases();
+
+  // Initialize client-side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Restore complete session state on mount
+  useEffect(() => {
+    if (!isClient) return;
+
+    console.log('🔄 Restoring disease diagnosis session state...');
+    
+    try {
+      // Restore all state from sessionStorage
+      const savedImagePreview = SessionStorage.get(STORAGE_KEYS.IMAGE_PREVIEW);
+      const savedImageUrl = SessionStorage.get(STORAGE_KEYS.IMAGE_URL);
+      const savedResult = SessionStorage.get(STORAGE_KEYS.RESULT);
+      const savedError = SessionStorage.get(STORAGE_KEYS.ERROR);
+      const savedDiseaseDetails = SessionStorage.get(STORAGE_KEYS.DISEASE_DETAILS);
+      const savedSelectedDiseaseIndex = SessionStorage.get(STORAGE_KEYS.SELECTED_DISEASE_INDEX);
+      const savedCurrentDiagnosisId = SessionStorage.get(STORAGE_KEYS.CURRENT_DIAGNOSIS_ID);
+
+      // Restore states
+      if (savedImagePreview) {
+        setImagePreview(savedImagePreview);
+        console.log('✅ Restored image preview');
+      }
+      if (savedImageUrl) {
+        setImageUrl(savedImageUrl);
+        console.log('✅ Restored image URL');
+      }
+      if (savedResult) {
+        setResult(savedResult);
+        console.log('✅ Restored diagnosis result');
+      }
+      if (savedError) {
+        setError(savedError);
+        console.log('✅ Restored error message');
+      }
+      if (savedDiseaseDetails) {
+        setDiseaseDetails(savedDiseaseDetails);
+        console.log('✅ Restored disease details');
+      }
+      if (savedSelectedDiseaseIndex !== null) {
+        setSelectedDiseaseIndex(savedSelectedDiseaseIndex);
+        console.log('✅ Restored selected disease index:', savedSelectedDiseaseIndex);
+      }
+      if (savedCurrentDiagnosisId) {
+        setCurrentDiagnosisId(savedCurrentDiagnosisId);
+        console.log('✅ Restored current diagnosis ID');
+      }
+
+      console.log('✅ Disease diagnosis session restoration complete');
+    } catch (error) {
+      console.error('❌ Error restoring disease diagnosis session:', error);
+    } finally {
+      setIsRestoringSession(false);
+    }
+  }, [isClient, setDiseaseDetails]);
 
   // Fetch user session
   useEffect(() => {
@@ -54,6 +182,73 @@ const DiseaseDiagnosisPage = () => {
       });
   }, []);
 
+  // Auto-save states to sessionStorage whenever they change
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    if (imagePreview) {
+      SessionStorage.set(STORAGE_KEYS.IMAGE_PREVIEW, imagePreview);
+    } else {
+      SessionStorage.remove(STORAGE_KEYS.IMAGE_PREVIEW);
+    }
+  }, [imagePreview, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    if (imageUrl) {
+      SessionStorage.set(STORAGE_KEYS.IMAGE_URL, imageUrl);
+    } else {
+      SessionStorage.remove(STORAGE_KEYS.IMAGE_URL);
+    }
+  }, [imageUrl, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    if (result) {
+      SessionStorage.set(STORAGE_KEYS.RESULT, result);
+    } else {
+      SessionStorage.remove(STORAGE_KEYS.RESULT);
+    }
+  }, [result, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    if (error) {
+      SessionStorage.set(STORAGE_KEYS.ERROR, error);
+    } else {
+      SessionStorage.remove(STORAGE_KEYS.ERROR);
+    }
+  }, [error, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    if (diseaseDetails) {
+      SessionStorage.set(STORAGE_KEYS.DISEASE_DETAILS, diseaseDetails);
+    } else {
+      SessionStorage.remove(STORAGE_KEYS.DISEASE_DETAILS);
+    }
+  }, [diseaseDetails, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    SessionStorage.set(STORAGE_KEYS.SELECTED_DISEASE_INDEX, selectedDiseaseIndex);
+  }, [selectedDiseaseIndex, isClient, isRestoringSession]);
+
+  useEffect(() => {
+    if (!isClient || isRestoringSession) return;
+    
+    if (currentDiagnosisId) {
+      SessionStorage.set(STORAGE_KEYS.CURRENT_DIAGNOSIS_ID, currentDiagnosisId);
+    } else {
+      SessionStorage.remove(STORAGE_KEYS.CURRENT_DIAGNOSIS_ID);
+    }
+  }, [currentDiagnosisId, isClient, isRestoringSession]);
+
   const handleImageSelect = (file, previewUrl) => {
     setSelectedImage(file);
     setImagePreview(previewUrl);
@@ -61,6 +256,12 @@ const DiseaseDiagnosisPage = () => {
     setError(null);
     setDiseaseDetails(null);
     setSelectedDiseaseIndex(0);
+    
+    // Clear related storage
+    SessionStorage.remove(STORAGE_KEYS.RESULT);
+    SessionStorage.remove(STORAGE_KEYS.ERROR);
+    SessionStorage.remove(STORAGE_KEYS.DISEASE_DETAILS);
+    SessionStorage.set(STORAGE_KEYS.SELECTED_DISEASE_INDEX, 0);
   };
 
   const uploadImage = async (file) => {
@@ -83,7 +284,9 @@ const DiseaseDiagnosisPage = () => {
 
   const handleDiagnoseDisease = async () => {
     if (!selectedImage || !user) {
-      setError("Please log in to diagnose plant diseases");
+      const errorMessage = "Please log in to diagnose plant diseases";
+      setError(errorMessage);
+      SessionStorage.set(STORAGE_KEYS.ERROR, errorMessage);
       return;
     }
 
@@ -91,10 +294,15 @@ const DiseaseDiagnosisPage = () => {
     setError(null);
     setDiseaseDetails(null);
     setResult(null);
+    
+    // Clear error from storage
+    SessionStorage.remove(STORAGE_KEYS.ERROR);
 
     try {
       const uploadedImageUrl = await uploadImage(selectedImage);
       setImageUrl(uploadedImageUrl);
+      SessionStorage.set(STORAGE_KEYS.IMAGE_URL, uploadedImageUrl);
+      
       setUploading(false);
       setDiagnosing(true);
 
@@ -114,9 +322,11 @@ const DiseaseDiagnosisPage = () => {
 
       const diagnosisResult = await response.json();
       setResult(diagnosisResult);
+      SessionStorage.set(STORAGE_KEYS.RESULT, diagnosisResult);
 
       if (diagnosisResult.diagnosis_id) {
         setCurrentDiagnosisId(diagnosisResult.diagnosis_id);
+        SessionStorage.set(STORAGE_KEYS.CURRENT_DIAGNOSIS_ID, diagnosisResult.diagnosis_id);
       }
 
       if (diagnosisResult.disease?.suggestions?.length > 0) {
@@ -129,7 +339,9 @@ const DiseaseDiagnosisPage = () => {
       }
     } catch (error) {
       console.error("Diagnosis error:", error);
-      setError(error.message);
+      const errorMessage = error.message;
+      setError(errorMessage);
+      SessionStorage.set(STORAGE_KEYS.ERROR, errorMessage);
     } finally {
       setUploading(false);
       setDiagnosing(false);
@@ -138,6 +350,8 @@ const DiseaseDiagnosisPage = () => {
 
   const handleDiseaseSelect = (index) => {
     setSelectedDiseaseIndex(index);
+    SessionStorage.set(STORAGE_KEYS.SELECTED_DISEASE_INDEX, index);
+    
     const selectedDisease = result.disease.suggestions[index];
     if (selectedDisease) {
       fetchDiseaseDetails(selectedDisease.name, result.plant_name || null, imageUrl);
@@ -152,6 +366,9 @@ const DiseaseDiagnosisPage = () => {
     setError(null);
     setDiseaseDetails(null);
     setSelectedDiseaseIndex(0);
+    
+    // Clear all session storage
+    SessionStorage.clear();
   };
 
   const handleSaveSuccess = (category) => {
@@ -159,6 +376,21 @@ const DiseaseDiagnosisPage = () => {
   };
 
   const showTips = !selectedImage && !result;
+
+  // Show loading state during session restoration
+  if (isRestoringSession) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex items-center justify-center h-[calc(100vh-80px)]">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 text-red-600 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600 font-semibold">Restoring session...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

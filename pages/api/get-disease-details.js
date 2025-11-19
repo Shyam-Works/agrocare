@@ -151,7 +151,7 @@ export default async function handler(req, res) {
         content: userContent + `\n\nReturn ONLY a valid JSON object with this exact structure:
 {
   "description": "2-3 sentences about what this disease is, what causes it, and its general characteristics",
-  "reference_link": "A reliable web link to Wikipedia or educational resource",
+  "reference_link": "A must have reliable web link to Wikipedia or educational resource",
   "symptoms": {
     "early_signs": "Description of early symptoms",
     "advanced_stage": "Description of advanced symptoms",
