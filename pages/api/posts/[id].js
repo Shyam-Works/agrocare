@@ -1,6 +1,6 @@
 // pages/api/posts/[id].js
-import connectDB from '../../../lib/mongodb';
-import Post from '../../../lib/models/Post';
+import {connectDB} from '@/lib/dbConnect';
+import Post from '@/models/Post';
 
 export default async function handler(req, res) {
   await connectDB();
