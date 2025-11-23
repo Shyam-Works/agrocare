@@ -37,7 +37,7 @@ const Navbar = () => {
     { name: "Disease Diagnosis", path: "/disease-diagnosis"},
     { name: "Dashboard", path: "/dashboard"},
     { name: "Marketplace", path: "/essentials" },
-    { name: "How to Start", path: "" },
+    { name: "How to Start", path: "howtostart" },
   ];
 
   const filteredNavItems = navItems.filter((item) => {
