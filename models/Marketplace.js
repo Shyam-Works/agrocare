@@ -34,7 +34,7 @@ const marketplaceSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['Plants', 'Tools', 'Seeds', 'Pest', 'Fertilizers', 'Rental'],
+    enum: ['Plants', 'Tools', 'Seeds', 'Pest', 'Fertilizers', 'Rental', 'Produce', 'Services'],
     required: true
   },
   location: {
