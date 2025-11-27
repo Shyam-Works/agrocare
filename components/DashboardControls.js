@@ -3,7 +3,6 @@
 import React from "react";
 import { Filter, ChevronDown, Download } from "lucide-react";
 
-// Assuming COLOR_PALETTE is passed or imported
 const DashboardControls = ({
   categories,
   selectedCategory,
@@ -32,7 +31,13 @@ const DashboardControls = ({
   ];
 
   return (
-    <div className="flex items-center gap-3 mb-6">
+    <div
+      className="
+        flex flex-wrap items-center gap-3 mb-6
+        justify-center md:justify-start
+        w-full
+      "
+    >
       {/* Category Dropdown */}
       <div className="relative">
         <button
@@ -40,14 +45,12 @@ const DashboardControls = ({
           className={`flex items-center space-x-2 px-4 py-2 bg-white border ${cardBorder} rounded-lg shadow-sm hover:bg-gray-50 transition-colors text-sm`}
         >
           <Filter className={`w-4 h-4 ${mediumText}`} />
-          <span className={`font-medium ${darkText}`}>
-            {currentCategoryName}
-          </span>
-          <span
-            className={`text-xs ${mediumText} bg-gray-100 px-2 py-0.5 rounded`}
-          >
+          <span className={`font-medium ${darkText}`}>{currentCategoryName}</span>
+
+          <span className={`text-xs ${mediumText} bg-gray-100 px-2 py-0.5 rounded`}>
             {currentCategoryCount}
           </span>
+
           <ChevronDown
             className={`w-4 h-4 ${mediumText} transition-transform ${
               showCategoryDropdown ? "rotate-180" : ""
@@ -60,9 +63,7 @@ const DashboardControls = ({
             className={`absolute top-full mt-2 w-72 bg-white border ${cardBorder} rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto`}
           >
             {categories.length === 0 ? (
-              <div
-                className={`px-4 py-3 text-sm ${mediumText} text-center`}
-              >
+              <div className={`px-4 py-3 text-sm ${mediumText} text-center`}>
                 No categories found
               </div>
             ) : (
@@ -88,6 +89,7 @@ const DashboardControls = ({
                       >
                         {category.name.charAt(0).toUpperCase()}
                       </div>
+
                       <div>
                         <div
                           className={`font-medium ${
@@ -98,15 +100,15 @@ const DashboardControls = ({
                         >
                           {category.name}
                         </div>
+
                         <div className={`text-xs ${mediumText}`}>
                           {category.count} {category.count === 1 ? "scan" : "scans"}
                         </div>
                       </div>
                     </div>
+
                     {selectedCategory === category.id && (
-                      <div
-                        className={`w-2 h-2 ${primaryBg} rounded-full`}
-                      ></div>
+                      <div className={`w-2 h-2 ${primaryBg} rounded-full`} />
                     )}
                   </button>
                 ))}
@@ -116,28 +118,30 @@ const DashboardControls = ({
         )}
       </div>
 
-      {/* Time Range Buttons */}
-      {timeRanges.map((range) => (
-        <button
-          key={range.key}
-          onClick={() => setTimeRange(range.key)}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm ${
-            timeRange === range.key
-              ? `${primaryBg} text-white hover:bg-green-700`
-              : `bg-white ${darkText} border ${cardBorder} hover:bg-gray-50`
-          }`}
-        >
-          {range.label}
-        </button>
-      ))}
+      {/* Time Range Buttons + Export wrapped together */}
+      <div className="flex flex-wrap items-center gap-3 justify-center">
+        {timeRanges.map((range) => (
+          <button
+            key={range.key}
+            onClick={() => setTimeRange(range.key)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm ${
+              timeRange === range.key
+                ? `${primaryBg} text-white hover:bg-green-700`
+                : `bg-white ${darkText} border ${cardBorder} hover:bg-gray-50`
+            }`}
+          >
+            {range.label}
+          </button>
+        ))}
 
-      {/* Export Button */}
-      <button
-        className={`ml-auto flex items-center space-x-2 px-4 py-2 bg-white border ${cardBorder} rounded-lg shadow-sm hover:bg-gray-50 transition-colors text-sm`}
-      >
-        <Download className={`w-4 h-4 ${mediumText}`} />
-        <span className={`font-medium ${darkText}`}>Export</span>
-      </button>
+        {/* Export Button */}
+        <button
+          className={`flex items-center space-x-2 px-4 py-2 bg-white border ${cardBorder} rounded-lg shadow-sm hover:bg-gray-50 transition-colors text-sm`}
+        >
+          <Download className={`w-4 h-4 ${mediumText}`} />
+          <span className={`font-medium ${darkText}`}>Export</span>
+        </button>
+      </div>
     </div>
   );
 };
