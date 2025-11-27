@@ -12,91 +12,89 @@ export default function Profile() {
   const [error, setError] = useState(null);
   const router = useRouter();
 
+  useEffect(() => {
+    console.log('\n=== PROFILE PAGE MOUNTED ===');
+    console.log('Session data:', {
+      id: session?.user?.id,
+      first_name: session?.user?.first_name,
+      last_name: session?.user?.last_name,
+      email: session?.user?.email,
+    });
+    console.log('=== PROFILE PAGE DATA END ===\n');
+  }, [session]);
 
   useEffect(() => {
-  console.log('\n=== PROFILE PAGE MOUNTED ===');
-  console.log('Session data:', {
-    id: session?.user?.id,
-    first_name: session?.user?.first_name,
-    last_name: session?.user?.last_name,
-    email: session?.user?.email,
-  });
-  console.log('=== PROFILE PAGE DATA END ===\n');
-}, [session]);
-  // Fetch user session and marketplace listings
-useEffect(() => {
-  const fetchUserData = async () => {
-    try {
-      setLoading(true);
+    const fetchUserData = async () => {
+      try {
+        setLoading(true);
 
-      console.log('\n=== FETCHING USER DATA ===');
-      const sessionResponse = await fetch("/api/auth/session");
-      const sessionData = await sessionResponse.json();
+        console.log('\n=== FETCHING USER DATA ===');
+        const sessionResponse = await fetch("/api/auth/session");
+        const sessionData = await sessionResponse.json();
 
-      console.log("Session response:", {
-        hasUser: !!sessionData?.user,
-        first_name: sessionData?.user?.first_name,
-        last_name: sessionData?.user?.last_name,
-        email: sessionData?.user?.email,
-      });
-
-      if (sessionData && sessionData.user) {
-        const userData = {
-          id: sessionData.user.id,
-          email: sessionData.user.email,
-          first_name: sessionData.user.first_name || sessionData.user.name?.split(" ")[0],
-          last_name: sessionData.user.last_name || sessionData.user.name?.split(" ").slice(1).join(" "),
-          role: sessionData.user.role,
-          description: sessionData.user.description,
-          profile_image_url: sessionData.user.profile_image_url || sessionData.user.image,
-          location: sessionData.user.location,
-          stats: sessionData.user.stats,
-        };
-        
-        console.log('Setting user state with:', {
-          first_name: userData.first_name,
-          last_name: userData.last_name,
+        console.log("Session response:", {
+          hasUser: !!sessionData?.user,
+          first_name: sessionData?.user?.first_name,
+          last_name: sessionData?.user?.last_name,
+          email: sessionData?.user?.email,
         });
-        
-        setUser(userData);
 
-        // Fetch marketplace listings...
-        try {
-          const listingsResponse = await fetch(`/api/marketplace/user-listings`, {
-            method: "GET",
-            credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-            },
+        if (sessionData && sessionData.user) {
+          const userData = {
+            id: sessionData.user.id,
+            email: sessionData.user.email,
+            first_name: sessionData.user.first_name || sessionData.user.name?.split(" ")[0],
+            last_name: sessionData.user.last_name || sessionData.user.name?.split(" ").slice(1).join(" "),
+            role: sessionData.user.role,
+            description: sessionData.user.description,
+            profile_image_url: sessionData.user.profile_image_url || sessionData.user.image,
+            location: sessionData.user.location,
+            stats: sessionData.user.stats,
+          };
+          
+          console.log('Setting user state with:', {
+            first_name: userData.first_name,
+            last_name: userData.last_name,
           });
+          
+          setUser(userData);
 
-          if (listingsResponse.ok) {
-            const listingsData = await listingsResponse.json();
-            if (listingsData.success) {
-              setMarketplaceListings(listingsData.listings || []);
+          try {
+            const listingsResponse = await fetch(`/api/marketplace/user-listings`, {
+              method: "GET",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            });
+
+            if (listingsResponse.ok) {
+              const listingsData = await listingsResponse.json();
+              if (listingsData.success) {
+                setMarketplaceListings(listingsData.listings || []);
+              }
             }
+          } catch (listingsError) {
+            console.error("Error fetching marketplace listings:", listingsError);
+            setMarketplaceListings([]);
           }
-        } catch (listingsError) {
-          console.error("Error fetching marketplace listings:", listingsError);
-          setMarketplaceListings([]);
+        } else {
+          console.log("No valid session found, redirecting to login");
+          router.push("/login");
+          return;
         }
-      } else {
-        console.log("No valid session found, redirecting to login");
-        router.push("/login");
-        return;
+        
+        console.log('=== FETCH USER DATA END ===\n');
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        setError("Failed to load profile data. Please try again.");
+      } finally {
+        setLoading(false);
       }
-      
-      console.log('=== FETCH USER DATA END ===\n');
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      setError("Failed to load profile data. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  fetchUserData();
-}, [router]);
+    fetchUserData();
+  }, [router]);
 
   const handleUpdateProfile = () => {
     router.push("/profile/edit");
@@ -104,18 +102,14 @@ useEffect(() => {
 
   const handleLogout = async () => {
     try {
-      // Use NextAuth signOut if available, otherwise clear localStorage
       if (typeof window !== "undefined") {
         const { signOut } = await import("next-auth/react");
         await signOut({ redirect: false });
       }
-
-      // Clear any localStorage tokens as fallback
       localStorage.removeItem("token");
       router.push("/");
     } catch (error) {
       console.error("Logout error:", error);
-      // Fallback: clear localStorage and redirect
       localStorage.removeItem("token");
       router.push("/");
     }
@@ -131,7 +125,7 @@ useEffect(() => {
     try {
       const response = await fetch(`/api/marketplace/${listingId}`, {
         method: "DELETE",
-        credentials: "include", // Use cookies instead of Authorization header
+        credentials: "include",
       });
 
       const data = await response.json();
@@ -162,7 +156,6 @@ useEffect(() => {
     return date.toLocaleDateString();
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -177,7 +170,6 @@ useEffect(() => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -198,7 +190,6 @@ useEffect(() => {
     );
   }
 
-  // No user state (shouldn't happen due to redirect, but just in case)
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -227,8 +218,7 @@ useEffect(() => {
       <div
         className="relative h-24 md:h-36 bg-cover bg-center"
         style={{
-          backgroundImage:
-            "url('/profile-background.png')",
+          backgroundImage: "url('/profile-background.png')",
         }}
       >
         <div className="absolute inset-0 bg-black bg-opacity-30"></div>
@@ -272,59 +262,8 @@ useEffect(() => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-            {/* Left Column - Account Info and Stats */}
-            <div className="lg:col-span-1 space-y-4 md:space-y-6 ">
-              {/* Account Info */}
-              <div className="bg-white rounded-xl md:rounded-2xl shadow-sm p-4 md:p-6 shadow-[3px_3px_0px_0px_grey]">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3 md:mb-4">
-                  Account Info
-                </h3>
-                <div className="space-y-2 md:space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <svg
-                      className="w-4 h-4 md:w-5 md:h-5 text-gray-500 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                      ></path>
-                    </svg>
-                    <span className="text-gray-700 text-sm md:text-base break-all">
-                      {user.email}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <svg
-                      className="w-4 h-4 md:w-5 md:h-5 text-gray-500 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      ></path>
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      ></path>
-                    </svg>
-                    <span className="text-gray-700 text-sm md:text-base">
-                      {user.location || "Location not set"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
+            {/* Left Column - Stats Only */}
+            <div className="lg:col-span-1 space-y-4 md:space-y-6">
               {/* Stats */}
               <div className="bg-white rounded-xl md:rounded-2xl shadow-sm p-4 md:p-6 shadow-[3px_3px_0px_0px_grey]">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 md:mb-4">
@@ -347,9 +286,6 @@ useEffect(() => {
                         ></path>
                       </svg>
                     </div>
-
-
-                    
                     <span className="text-gray-700 text-sm md:text-base">
                       Marketplace Listings:
                     </span>
@@ -409,9 +345,61 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* Right Column - Marketplace Listings */}
-            <div className="lg:col-span-2 rounded-xl shadow-[3px_3px_0px_0px_grey]">
-              <div className="bg-white rounded-xl md:rounded-2xl shadow-sm p-4 md:p-6">
+            {/* Right Column - Account Info + Marketplace Listings */}
+            <div className="lg:col-span-2 space-y-4 md:space-y-6">
+              {/* Account Info Card - Moved here */}
+              <div className="bg-white rounded-xl md:rounded-2xl shadow-sm p-4 md:p-6 shadow-[3px_3px_0px_0px_grey]">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3 md:mb-4">
+                  Account Info
+                </h3>
+                <div className="space-y-2 md:space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <svg
+                      className="w-4 h-4 md:w-5 md:h-5 text-gray-500 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      ></path>
+                    </svg>
+                    <span className="text-gray-700 text-sm md:text-base break-all">
+                      {user.email}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <svg
+                      className="w-4 h-4 md:w-5 md:h-5 text-gray-500 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                      ></path>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                      ></path>
+                    </svg>
+                    <span className="text-gray-700 text-sm md:text-base">
+                      {user.location || "Location not set"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Marketplace Listings */}
+              <div className="bg-white rounded-xl md:rounded-2xl shadow-sm p-4 md:p-6 shadow-[3px_3px_0px_0px_grey]">
                 <div className="flex items-center justify-between mb-4 md:mb-6">
                   <h2 className="text-lg md:text-xl font-semibold text-gray-900">
                     Marketplace Listings
